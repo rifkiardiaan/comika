@@ -1,0 +1,149 @@
+import api from './api'
+import type {
+  AdminComic,
+  AdminComment,
+  AdminCreator,
+  AdminReport,
+  AdminTransaction,
+  AdminUser,
+  AdminWithdrawal,
+  ComicStatus,
+  CommentModerationStatus,
+  DashboardStats,
+  Genre,
+  PaginationMeta,
+  ReportStatus,
+  Role,
+  TransactionStatus,
+  TransactionType,
+  WithdrawalStatus,
+} from '../types'
+
+export { getApiErrorMessage } from '../utils/errors'
+export type { ApiErrorData } from '../utils/errors'
+
+interface ListResponse<T> {
+  success: boolean
+  message: string
+  data: T[]
+  meta: PaginationMeta
+}
+
+export const admin = {
+  // ============ Dashboard ============
+  async dashboard(): Promise<DashboardStats> {
+    const { data } = await api.get<{ data: DashboardStats }>('/admin/dashboard')
+    return data.data
+  },
+
+  // ============ Users ============
+  async users(params: { q?: string; role?: Role; page?: number } = {}): Promise<ListResponse<AdminUser>> {
+    const { data } = await api.get<ListResponse<AdminUser>>('/admin/users', { params })
+    return data
+  },
+
+  async updateUserRole(id: number, role: Role): Promise<AdminUser> {
+    const { data } = await api.patch<{ data: AdminUser }>(`/admin/users/${id}/role`, { role })
+    return data.data
+  },
+
+  async deleteUser(id: number): Promise<void> {
+    await api.delete(`/admin/users/${id}`)
+  },
+
+  // ============ Creators ============
+  async creators(params: { q?: string; verified?: boolean; page?: number } = {}): Promise<ListResponse<AdminCreator>> {
+    const { data } = await api.get<ListResponse<AdminCreator>>('/admin/creators', { params })
+    return data
+  },
+
+  async verifyCreator(id: number, verified: boolean): Promise<AdminCreator> {
+    const { data } = await api.patch<{ data: AdminCreator }>(`/admin/creators/${id}/verify`, { verified })
+    return data.data
+  },
+
+  // ============ Comics ============
+  async comics(params: { q?: string; status?: ComicStatus; visibility?: 'all' | 'published' | 'draft'; page?: number } = {}): Promise<ListResponse<AdminComic>> {
+    const { data } = await api.get<ListResponse<AdminComic>>('/admin/comics', { params })
+    return data
+  },
+
+  async updateComicStatus(id: number, status: ComicStatus): Promise<AdminComic> {
+    const { data } = await api.patch<{ data: AdminComic }>(`/admin/comics/${id}/status`, { status })
+    return data.data
+  },
+
+  async deleteComic(id: number): Promise<void> {
+    await api.delete(`/admin/comics/${id}`)
+  },
+
+  // ============ Comments ============
+  async comments(params: { q?: string; status?: CommentModerationStatus | 'deleted'; page?: number } = {}): Promise<ListResponse<AdminComment>> {
+    const { data } = await api.get<ListResponse<AdminComment>>('/admin/comments', { params })
+    return data
+  },
+
+  async moderateComment(id: number, status: CommentModerationStatus): Promise<AdminComment> {
+    const { data } = await api.patch<{ data: AdminComment }>(`/admin/comments/${id}/moderate`, { status })
+    return data.data
+  },
+
+  async deleteComment(id: number): Promise<void> {
+    await api.delete(`/admin/comments/${id}`)
+  },
+
+  // ============ Reports ============
+  async reports(params: { status?: ReportStatus; page?: number } = {}): Promise<ListResponse<AdminReport>> {
+    const { data } = await api.get<ListResponse<AdminReport>>('/admin/reports', { params })
+    return data
+  },
+
+  async handleReport(id: number, payload: { status: ReportStatus; admin_note?: string }): Promise<AdminReport> {
+    const { data } = await api.patch<{ data: AdminReport }>(`/admin/reports/${id}/handle`, payload)
+    return data.data
+  },
+
+  // ============ Genres ============
+  async genres(): Promise<Genre[]> {
+    const { data } = await api.get<{ data: Genre[] }>('/genres')
+    return data.data
+  },
+
+  async createGenre(payload: { name: string; slug?: string }): Promise<Genre> {
+    const { data } = await api.post<{ data: Genre }>('/admin/genres', payload)
+    return data.data
+  },
+
+  async updateGenre(id: number, payload: { name: string; slug?: string }): Promise<Genre> {
+    const { data } = await api.put<{ data: Genre }>(`/admin/genres/${id}`, payload)
+    return data.data
+  },
+
+  async deleteGenre(id: number): Promise<void> {
+    await api.delete(`/admin/genres/${id}`)
+  },
+
+  // ============ Transactions & Withdrawals (Phase 09) ============
+  async transactions(params: {
+    type?: TransactionType
+    status?: TransactionStatus
+    q?: string
+    page?: number
+  } = {}): Promise<ListResponse<AdminTransaction>> {
+    const { data } = await api.get<ListResponse<AdminTransaction>>('/admin/transactions', { params })
+    return data
+  },
+
+  async withdrawals(params: { status?: WithdrawalStatus; q?: string; page?: number } = {}): Promise<ListResponse<AdminWithdrawal>> {
+    const { data } = await api.get<ListResponse<AdminWithdrawal>>('/admin/withdrawals', { params })
+    return data
+  },
+
+  async handleWithdrawal(
+    id: number,
+    payload: { status: WithdrawalStatus; admin_note?: string },
+  ): Promise<AdminWithdrawal> {
+    const { data } = await api.patch<{ data: AdminWithdrawal }>(`/admin/withdrawals/${id}/status`, payload)
+    return data.data
+  },
+}

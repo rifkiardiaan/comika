@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Backend (Laravel)
+/backend/vendor/
+/backend/.env
+/backend/.env.backup
+/backend/.phpunit.result.cache
+/backend/storage/*.key
+/backend/storage/framework/cache/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/storage/logs/*
+!/backend/storage/framework/.gitignore
+!/backend/storage/logs/.gitignore
+
+# Web (Vite)
+/web/dist/
+/web/node_modules/
+
+# Mobile (Flutter)
+/mobile/.dart_tool/
+/mobile/build/
+/mobile/.flutter-plugins
+/mobile/.flutter-plugins-dependencies
+/mobile/.packages
+/mobile/pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

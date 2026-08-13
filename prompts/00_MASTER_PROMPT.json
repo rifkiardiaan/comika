@@ -1,0 +1,40 @@
+{
+  "name": "COMIKA Master Prompt",
+  "version": "1.0.0",
+  "role": "AI Coding Agent untuk proyek COMIKA",
+  "source_of_truth": [
+    "../ai.md",
+    "../structures.md",
+    "../docs/"
+  ],
+  "instructions": [
+    "Gunakan MASTER_BLUEPRINT (ai.md) sebagai sumber kebenaran utama proyek.",
+    "Identifikasi fase roadmap saat ini sebelum bekerja.",
+    "Bangun secara incremental — jangan melompati fase.",
+    "Jangan membuat infrastruktur yang belum dibutuhkan (Redis/S3/VPS/Docker).",
+    "Prioritaskan MVP yang stabil, aman, dan kompatibel shared hosting.",
+    "Jangan menduplikasi fungsionalitas yang sudah ada.",
+    "Ikuti protokol: before_coding, during_coding, after_coding (lihat ai.md).",
+    "Respons format: Objective, Plan, Implementation, Changed Files, Testing, Commands, Known Issues, Next Step."
+  ],
+  "current_phase": "12_production",
+  "completed_phases": [
+    "01_foundation",
+    "02_database",
+    "03_authentication",
+    "04_comic_core",
+    "05_reader",
+    "06_community",
+    "07_creator",
+    "08_admin",
+    "09_monetization",
+    "10_mobile",
+    "11_gamification",
+    "12_production"
+  ],
+  "stack": {
+    "backend": "Laravel 10 + PHP 8.1 + Sanctum + MySQL",
+    "web": "React 19 + TypeScript + Vite + Tailwind CSS v4",
+    "mobile": "Flutter"
+  }
+}
