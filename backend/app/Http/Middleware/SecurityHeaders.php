@@ -27,6 +27,18 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
+        // Content-Security-Policy (API murni JSON — blokir semua eksekusi
+        // konten inline/eksternal sebagai pertahanan berlapis XSS).
+        // API tidak pernah mengembalikan HTML, jadi policy ketat aman.
+        $response->headers->set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+
+        // API JSON tidak boleh di-cache oleh browser/proxy (data privat).
+        // Khusus untuk request autentikasi, cache bisa membocorkan data
+        // antar user jika memakai shared proxy.
+        if ($request->user() || $request->is('api/*')) {
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        }
+
         // HSTS hanya saat koneksi aman (HTTPS), agar tidak merusak dev HTTP.
         // Catatan: isSecure() baru benar bila TrustProxies memercayai proxy
         // hosting (lihat app/Http/Middleware/TrustProxies.php).

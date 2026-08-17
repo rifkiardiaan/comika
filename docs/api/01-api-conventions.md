@@ -163,6 +163,48 @@
 - Saat admin menandai withdrawal `paid`, earning pending creator ditandai paid (FIFO hingga nominal terpenuhi) dan transaksi withdrawal menjadi `success`.
 - **MVP tanpa payment gateway**: `POST /coin-packages/{package}/purchase` mencatat `payment_method: mock` (simulasi verifikasi instan) — siap di-swap ke payment provider abstraction.
 
+## Web Push Notification (Post-MVP — ✅ Selesai)
+
+Notifikasi in-app otomatis ikut dikirim sebagai **web push** (VAPID, tanpa Firebase) ke semua
+browser/device yang terdaftar di `push_subscriptions`. Setup: `php artisan webpush:keys` → isi
+`VAPID_SUBJECT`/`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` di `.env` → `php artisan migrate`.
+
+| Method | Endpoint | Auth | Keterangan |
+|--------|----------|------|------------|
+| GET | `/api/v1/push/vapid-public-key` | ❌ | Public key VAPID (base64url) untuk `pushManager.subscribe`; 503 bila belum dikonfigurasi |
+| POST | `/api/v1/me/push/subscribe` | ✅ | Simpan/perbarui subscription (upsert per `endpoint`); body `{ endpoint, keys: { p256dh, auth }, user_agent? }` |
+| DELETE | `/api/v1/me/push/subscribe` | ✅ | Hapus subscription milik user (body `{ endpoint }`) |
+| GET | `/api/v1/me/push/subscriptions` | ✅ | Daftar subscription milik user + flag `configured` |
+
+**Aturan:**
+- Subscription `push_subscriptions`: uuid id, `endpoint` unik, `keys` JSON (p256dh/auth), cascade saat user dihapus.
+- Push dikirim dari `NotificationService` (best-effort, error tidak menggagalkan notifikasi in-app).
+- Endpoint yang mengembalikan 404/410 (subscription expired) otomatis dihapus dari database.
+- Payload push berisi `{ title, body, data: { url, notification_id, type } }`; service worker `web/public/sw.js` menampilkan notifikasi & membuka URL tujuan saat diklik.
+
+## AI Assistant (Post-MVP — ✅ Selesai)
+
+Alat bantu menulis untuk creator (blueprint 27) — optional service: bila `AI_API_KEY`
+diisi di `.env`, backend memanggil LLM OpenAI-compatible (`/chat/completions`); bila kosong,
+generator rule-based bawaan dipakai (fitur tetap berfungsi untuk demo, tanpa API).
+
+| Method | Endpoint | Auth | Keterangan |
+|--------|----------|------|------------|
+| GET | `/api/v1/ai/status` | ❌ | Apakah AI dikonfigurasi (`{ configured }`) — untuk badge UI |
+| POST | `/api/v1/ai/titles` | 🔒 creator | Ide judul komik → `{ titles: string[] }` |
+| POST | `/api/v1/ai/synopsis` | 🔒 creator | Sinopsis → `{ synopsis }` |
+| POST | `/api/v1/ai/genres-tags` | 🔒 creator | Rekomendasi genre & tag → `{ genres[], tags[] }` |
+| POST | `/api/v1/ai/character` | 🔒 creator | Konsep karakter → `{ character: { name, role, personality, traits[], backstory } }` |
+| POST | `/api/v1/ai/outline` | 🔒 creator | Outline episode → `{ outline: [{ number, title, summary }] }` |
+
+**Aturan:**
+- Input opsional (semua field boleh kosong): `topic`, `title`, `synopsis`, `keywords`,
+  `role`, `genres[]`, `count` (1–10). Setiap tool memakai kombinasi field yang relevan.
+- Tool AI hanya untuk role creator (middleware `creator`) — reader/admin dapat 403.
+- Gagal request LLM / JSON tidak valid → otomatis fallback ke generator rule-based (never 5xx).
+- Konfigurasi: `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, `AI_TIMEOUT` di `.env`.
+- AI tidak pernah menjadi dependency core platform (blueprint: optional service).
+
 ## Aturan
 
 - Business logic kompleks → **Service layer**, bukan di Controller.

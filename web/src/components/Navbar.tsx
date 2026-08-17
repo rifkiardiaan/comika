@@ -12,6 +12,7 @@ import {
   Palette,
   Search,
   Shield,
+  Sparkles,
   Trophy,
   User,
   Wallet,
@@ -189,6 +190,13 @@ export default function Navbar() {
                       >
                         <Banknote size={15} /> Penghasilan & Penarikan
                       </Link>
+                      <Link
+                        to="/creator/ai"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-violet-300 transition-colors hover:bg-surface-800 hover:text-violet-200"
+                      >
+                        <Sparkles size={15} /> Asisten AI
+                      </Link>
                     </>
                   )}
                   {user.role === 'admin' && (
@@ -311,13 +319,22 @@ export default function Navbar() {
                   <Trophy size={16} /> Prestasi & Level
                 </NavLink>
                 {user.role === 'creator' && (
-                  <NavLink
-                    to="/creator"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-pink-300 transition-colors hover:bg-surface-800/60 hover:text-pink-200"
-                  >
-                    <Palette size={16} /> Dashboard Creator
-                  </NavLink>
+                  <>
+                    <NavLink
+                      to="/creator"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-pink-300 transition-colors hover:bg-surface-800/60 hover:text-pink-200"
+                    >
+                      <Palette size={16} /> Dashboard Creator
+                    </NavLink>
+                    <NavLink
+                      to="/creator/ai"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-violet-300 transition-colors hover:bg-surface-800/60 hover:text-violet-200"
+                    >
+                      <Sparkles size={16} /> Asisten AI
+                    </NavLink>
+                  </>
                 )}
                 {user.role === 'admin' && (
                   <NavLink

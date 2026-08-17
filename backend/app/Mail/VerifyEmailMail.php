@@ -19,6 +19,7 @@ class VerifyEmailMail extends Mailable
     public function __construct(
         public readonly string $userName,
         public readonly string $verificationUrl,
+        public readonly ?string $verificationCode = null,
     ) {
     }
 

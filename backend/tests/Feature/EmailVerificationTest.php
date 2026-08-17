@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Mail\VerifyEmailMail;
 use App\Models\User;
+use App\Services\EmailVerificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -18,6 +20,8 @@ class EmailVerificationTest extends TestCase
             'email_verified_at' => null,
         ]);
     }
+
+    // ============ Registrasi & email ============
 
     public function test_register_sends_verification_email(): void
     {
@@ -33,7 +37,10 @@ class EmailVerificationTest extends TestCase
             ->assertJsonPath('data.user.is_email_verified', false);
 
         Mail::assertSent(VerifyEmailMail::class, function (VerifyEmailMail $mail) {
-            return $mail->hasTo('userbaru@example.com');
+            return $mail->hasTo('userbaru@example.com')
+                && $mail->verificationCode !== null
+                && strlen($mail->verificationCode) === 6
+                && $mail->verificationUrl !== '';
         });
     }
 
@@ -82,6 +89,8 @@ class EmailVerificationTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    // ============ Verifikasi via link signed ============
+
     public function test_signed_link_verifies_email_and_redirects(): void
     {
         $user = $this->unverifiedUser();
@@ -118,5 +127,105 @@ class EmailVerificationTest extends TestCase
             .'&signature='.$query['signature'];
 
         $this->get($expiredUrl)->assertStatus(403);
+    }
+
+    // ============ Verifikasi via kode 6 digit ============
+
+    public function test_unauthenticated_cannot_verify_with_code(): void
+    {
+        $this->postJson('/api/v1/auth/email/verify-code', ['code' => '123456'])
+            ->assertStatus(401);
+    }
+
+    public function test_service_generates_hashed_code_and_expiry(): void
+    {
+        $user = $this->unverifiedUser();
+        $service = app(EmailVerificationService::class);
+
+        $code = $service->send($user);
+        $fresh = $user->fresh();
+
+        $this->assertMatchesRegularExpression('/^[0-9]{6}$/', $code);
+        $this->assertTrue(Hash::check($code, $fresh->email_verification_code));
+        $this->assertNotNull($fresh->email_verification_code_expires_at);
+        $this->assertTrue($fresh->email_verification_code_expires_at->isFuture());
+    }
+
+    public function test_verify_with_correct_code_marks_email_verified(): void
+    {
+        Mail::fake();
+
+        $user = $this->unverifiedUser();
+        $service = app(EmailVerificationService::class);
+
+        $code = $service->send($user);
+
+        $this->withToken($user->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/auth/email/verify-code', ['code' => $code])
+            ->assertStatus(200)
+            ->assertJsonPath('data.verified', true);
+
+        $this->assertNotNull($user->fresh()->email_verified_at);
+
+        // Kode langsung dibersihkan setelah berhasil
+        $this->assertNull($user->fresh()->email_verification_code);
+        $this->assertNull($user->fresh()->email_verification_code_expires_at);
+    }
+
+    public function test_verify_with_wrong_code_is_rejected(): void
+    {
+        Mail::fake();
+
+        $user = $this->unverifiedUser();
+        app(EmailVerificationService::class)->send($user);
+
+        $this->withToken($user->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/auth/email/verify-code', ['code' => '000000'])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
+    public function test_verify_with_invalid_format_is_rejected(): void
+    {
+        $user = $this->unverifiedUser();
+
+        $this->withToken($user->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/auth/email/verify-code', ['code' => 'abc'])
+            ->assertStatus(422);
+    }
+
+    public function test_expired_code_is_rejected(): void
+    {
+        Mail::fake();
+
+        $user = $this->unverifiedUser();
+        $service = app(EmailVerificationService::class);
+
+        $code = $service->send($user);
+        $user->forceFill([
+            'email_verification_code_expires_at' => now()->subMinute(),
+        ])->save();
+
+        $this->withToken($user->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/auth/email/verify-code', ['code' => $code])
+            ->assertStatus(422);
+
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
+    public function test_verified_user_verify_code_returns_ok_without_code(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->reader()->create();
+
+        $this->withToken($user->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/auth/email/verify-code', ['code' => '123456'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.verified', true);
+
+        Mail::assertNothingSent();
     }
 }

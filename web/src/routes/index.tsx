@@ -19,6 +19,7 @@ import ResetPasswordPage from '../pages/ResetPasswordPage'
 import VerifyEmailPage from '../pages/VerifyEmailPage'
 import WalletPage from '../pages/WalletPage'
 import CreatorEarningsPage from '../pages/CreatorEarningsPage'
+import CreatorAiPage from '../pages/creator/CreatorAiPage'
 import CreatorDashboardPage from '../pages/creator/CreatorDashboardPage'
 import CreatorComicsPage from '../pages/creator/CreatorComicsPage'
 import CreatorComicDetailPage from '../pages/creator/CreatorComicDetailPage'
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
       { path: 'creator/comics/:id', element: <CreatorComicDetailPage /> },
       { path: 'creator/comics/:id/analytics', element: <CreatorAnalyticsPage /> },
       { path: 'creator/earnings', element: <CreatorEarningsPage /> },
+      { path: 'creator/ai', element: <CreatorAiPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },

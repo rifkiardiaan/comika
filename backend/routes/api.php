@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdminComicController;
+use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\AdminCommentController;
 use App\Http\Controllers\Api\AdminCreatorController;
 use App\Http\Controllers\Api\AdminDashboardController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\ReadingHistoryController;
 use App\Http\Controllers\Api\UnlockController;
@@ -80,9 +82,13 @@ Route::prefix('auth')->group(function () {
         Route::patch('me/profile', [AuthController::class, 'updateProfile']);
     });
 
-    // Kirim ulang link verifikasi — butuh login (anti spam throttled)
+    // Kirim ulang email verifikasi — butuh login (anti spam throttled)
     Route::post('email/verification-notification', [EmailVerificationController::class, 'resend'])
         ->middleware(['auth:sanctum', 'throttle:3,1']);
+
+    // Verifikasi email dengan kode 6 digit — butuh login (anti brute force throttled)
+    Route::post('email/verify-code', [EmailVerificationController::class, 'verifyCode'])
+        ->middleware(['auth:sanctum', 'throttle:10,1']);
 
     // Lupa / atur ulang password — publik
     Route::post('forgot-password', [PasswordResetController::class, 'sendResetLink'])
@@ -110,6 +116,32 @@ Route::middleware('auth:sanctum')->prefix('me')->group(function () {
     Route::put('notifications/{notification}/read', [NotificationController::class, 'markRead']);
     Route::patch('notifications/{notification}/read', [NotificationController::class, 'markRead']);
     Route::delete('notifications/{notification}', [NotificationController::class, 'destroy']);
+});
+
+// ============================================================
+// Web push notification (blueprint 24 — push notification) — butuh login
+// ============================================================
+// Public key VAPID — publik (kunci memang untuk dibagikan ke browser)
+Route::get('push/vapid-public-key', [PushController::class, 'vapidPublicKey']);
+
+Route::middleware('auth:sanctum')->prefix('me/push')->group(function () {
+    Route::get('subscriptions', [PushController::class, 'index']);
+    Route::post('subscribe', [PushController::class, 'subscribe']);
+    Route::delete('subscribe', [PushController::class, 'unsubscribe']);
+});
+
+// ============================================================
+// AI Assistant (blueprint 27) — optional service, butuh role creator
+// ============================================================
+// Status publik — hanya memberi tahu UI apakah AI dikonfigurasi
+Route::get('ai/status', [AiController::class, 'status']);
+
+Route::middleware(['auth:sanctum', 'creator'])->prefix('ai')->group(function () {
+    Route::post('titles', [AiController::class, 'titles']);
+    Route::post('synopsis', [AiController::class, 'synopsis']);
+    Route::post('genres-tags', [AiController::class, 'genresTags']);
+    Route::post('character', [AiController::class, 'character']);
+    Route::post('outline', [AiController::class, 'outline']);
 });
 
 // ============================================================

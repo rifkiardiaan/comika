@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import {
   AlertCircle,
   BadgeCheck,
+  Bell,
+  BellOff,
+  BellRing,
   BookOpen,
   Calendar,
   CheckCircle2,
@@ -19,6 +22,7 @@ import Avatar from '../components/Avatar'
 import PageHeader from '../components/admin/PageHeader'
 import { auth } from '../services/auth'
 import { creator } from '../services/creator'
+import { push } from '../services/push'
 import { getApiErrorMessage } from '../utils/errors'
 import { formatDate } from '../utils/format'
 import type { CreatorProfile, User } from '../types'
@@ -51,6 +55,10 @@ export default function ProfilePage() {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState('')
 
+  // Web push notification (browser)
+  const [pushState, setPushState] = useState<'checking' | 'unsupported' | 'on' | 'off'>('checking')
+  const [pushBusy, setPushBusy] = useState(false)
+
   const fetchProfile = useCallback(async () => {
     if (user?.role !== 'creator') return
     setLoadingProfile(true)
@@ -69,6 +77,40 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user?.role === 'creator') fetchProfile()
   }, [user, fetchProfile])
+
+  useEffect(() => {
+    let cancelled = false
+    const checkPushStatus = async () => {
+      if (!push.isSupported()) {
+        if (!cancelled) setPushState('unsupported')
+        return
+      }
+      if (Notification.permission !== 'granted') {
+        if (!cancelled) setPushState('off')
+        return
+      }
+      const subscription = await push.getSubscription()
+      if (!cancelled) setPushState(subscription ? 'on' : 'off')
+    }
+    checkPushStatus()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleEnablePush = async () => {
+    setPushBusy(true)
+    const ok = await push.enable()
+    setPushBusy(false)
+    if (ok) setPushState('on')
+  }
+
+  const handleDisablePush = async () => {
+    setPushBusy(true)
+    await push.disable()
+    setPushBusy(false)
+    setPushState('off')
+  }
 
   if (!user) {
     return (
@@ -342,6 +384,72 @@ export default function ProfilePage() {
             {profileSaving ? 'Menyimpan…' : 'Simpan Profil Akun'}
           </button>
         </form>
+      </section>
+
+      {/* ====== Notifikasi browser (web push) ====== */}
+      <section className="mt-10 rounded-2xl border border-surface-800 bg-surface-900 p-6">
+        <h2 className="flex items-center gap-2 font-display text-lg font-bold text-surface-50">
+          <BellRing size={18} className="text-brand-300" /> Notifikasi Browser
+        </h2>
+        <p className="mt-1 text-sm text-surface-400">
+          Terima notifikasi langsung di browser walau tab COMIKA sedang ditutup — episode baru,
+          balasan komentar, dan info transaksi.
+        </p>
+
+        {pushState === 'checking' ? (
+          <div className="mt-5 flex items-center gap-2 text-sm text-surface-500">
+            <Loader2 size={15} className="animate-spin" /> Memeriksa status…
+          </div>
+        ) : pushState === 'unsupported' ? (
+          <div className="mt-5 flex items-start gap-2 rounded-xl border border-surface-800 bg-surface-950 px-4 py-3 text-sm text-surface-400">
+            <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-300" />
+            Browser kamu tidak mendukung web push. Gunakan Chrome, Edge, atau Firefox versi terbaru.
+          </div>
+        ) : (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-800 bg-surface-950 px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                  pushState === 'on' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-surface-800 text-surface-400'
+                }`}
+              >
+                {pushState === 'on' ? <Bell size={16} /> : <BellOff size={16} />}
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-surface-100">
+                  {pushState === 'on' ? 'Notifikasi aktif' : 'Notifikasi nonaktif'}
+                </p>
+                <p className="text-xs text-surface-400">
+                  {pushState === 'on'
+                    ? 'Push akan dikirim ke browser ini.'
+                    : 'Aktifkan untuk menerima notifikasi browser.'}
+                </p>
+              </div>
+            </div>
+
+            {pushState === 'on' ? (
+              <button
+                type="button"
+                onClick={handleDisablePush}
+                disabled={pushBusy}
+                className="inline-flex items-center gap-2 rounded-xl border border-surface-700 bg-surface-900 px-5 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-red-500/50 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {pushBusy ? <Loader2 size={15} className="animate-spin" /> : <BellOff size={15} />}
+                {pushBusy ? 'Memproses…' : 'Nonaktifkan'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleEnablePush}
+                disabled={pushBusy}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {pushBusy ? <Loader2 size={15} className="animate-spin" /> : <Bell size={15} />}
+                {pushBusy ? 'Memproses…' : 'Aktifkan Notifikasi'}
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {/* ====== Ganti password ====== */}

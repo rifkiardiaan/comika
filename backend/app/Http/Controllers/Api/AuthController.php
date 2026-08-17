@@ -8,11 +8,10 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\UpdatePasswordRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
-use App\Mail\VerifyEmailMail;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\EmailVerificationService;
 use App\Services\GamificationService;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,14 +49,11 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth')->plainTextToken;
 
-        // Kirim email verifikasi (link signed, berlaku 60 menit).
+        // Kirim email verifikasi berisi kode 6 digit + link signed (60 menit).
         // Akun sudah dibuat — kegagalan SMTP tidak boleh menggagalkan
         // registrasi; user bisa minta kirim ulang lewat endpoint resend.
         try {
-            Mail::to($user->email)->send(new VerifyEmailMail(
-                $user->name,
-                VerifyEmailMail::urlFor($user),
-            ));
+            app(EmailVerificationService::class)->send($user);
         } catch (\Throwable $e) {
             report($e);
         }

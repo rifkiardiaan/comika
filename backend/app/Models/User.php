@@ -53,6 +53,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'email_verification_code_expires_at' => 'datetime',
         'password' => 'hashed',
     ];
 
@@ -165,5 +166,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function appNotifications(): HasMany
     {
         return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Subscription web push (Web Push API) — untuk notifikasi browser.
+     * Satu user bisa punya banyak device/browser.
+     */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
     }
 }

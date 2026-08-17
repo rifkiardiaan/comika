@@ -64,10 +64,22 @@ export const auth = {
 
   // ============ Email verification ============
 
-  /** Kirim ulang link verifikasi email (harus login). */
+  /** Kirim ulang email verifikasi (kode 6 digit + link, harus login). */
   async sendVerificationEmail(): Promise<string> {
     const { data } = await api.post<{ message: string }>('/auth/email/verification-notification')
     return data.message
+  },
+
+  /** Verifikasi email memakai kode 6 digit dari email (harus login). */
+  async verifyEmailCode(code: string): Promise<{ verified: boolean; message: string }> {
+    const { data } = await api.post<{ message: string; data: { verified: boolean } }>('/auth/email/verify-code', { code })
+    // Perbarui status verifikasi user di storage agar banner hilang
+    const stored = this.getStoredUser()
+    if (stored) {
+      const updated = { ...stored, is_email_verified: true, email_verified_at: new Date().toISOString() }
+      this.setSession(this.getToken() ?? '', updated)
+    }
+    return { verified: data.data?.verified ?? true, message: data.message }
   },
 
   // ============ Password reset ============

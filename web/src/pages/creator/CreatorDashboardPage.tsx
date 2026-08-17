@@ -11,8 +11,8 @@ import {
   Loader2,
   Lock,
   MessageSquare,
+  Sparkles,
   Star,
-  TrendingUp,
   Users,
 } from 'lucide-react'
 import PageHeader from '../../components/admin/PageHeader'
@@ -216,7 +216,7 @@ export default function CreatorDashboardPage() {
       {/* ====== Quick actions ====== */}
       <section className="mt-10 grid gap-4 sm:grid-cols-3">
         <QuickAction to="/creator/comics" icon={<BookOpen size={18} />} title="Kelola Komik" desc="Buat, edit, dan atur komik Anda" />
-        <QuickAction to="/creator/comics" icon={<TrendingUp size={18} />} title="Analitik" desc="Pantau performa tiap komik dari daftar komik" />
+        <QuickAction to="/creator/ai" icon={<Sparkles size={18} />} title="Asisten AI" desc="Judul, sinopsis, karakter & outline dengan bantuan AI" />
         <QuickAction to="/creator/earnings" icon={<Banknote size={18} />} title="Penghasilan" desc="Lihat earning & ajukan penarikan" />
       </section>
     </div>

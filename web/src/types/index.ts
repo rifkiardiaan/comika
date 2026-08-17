@@ -419,6 +419,41 @@ export interface ComicAnalytics {
 }
 
 /* ------------------------------------------------------------------ */
+/* AI Assistant (Phase 11 — blueprint 27) — alat bantu menulis creator */
+/* ------------------------------------------------------------------ */
+
+export interface AiTitleResult {
+  titles: string[]
+}
+
+export interface AiSynopsisResult {
+  synopsis: string
+}
+
+export interface AiGenresTagsResult {
+  genres: string[]
+  tags: string[]
+}
+
+export interface AiCharacterResult {
+  character: {
+    name: string
+    role: string
+    personality: string
+    traits: string[]
+    backstory: string
+  }
+}
+
+export interface AiOutlineResult {
+  outline: Array<{
+    number: number
+    title: string
+    summary: string
+  }>
+}
+
+/* ------------------------------------------------------------------ */
 /* Admin (Phase 09) — transaksi & withdrawal                           */
 /* ------------------------------------------------------------------ */
 
