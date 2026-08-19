@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\PublicCreatorController;
 use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\ReadingHistoryController;
@@ -80,6 +81,7 @@ Route::prefix('auth')->group(function () {
         // Ubah profil dasar (nama & avatar)
         Route::put('me/profile', [AuthController::class, 'updateProfile']);
         Route::patch('me/profile', [AuthController::class, 'updateProfile']);
+        Route::delete('me/avatar', [AuthController::class, 'deleteAvatar']);
     });
 
     // Kirim ulang email verifikasi — butuh login (anti spam throttled)
@@ -150,6 +152,8 @@ Route::middleware(['auth:sanctum', 'creator'])->prefix('ai')->group(function () 
 // Endpoint publik
 Route::get('genres', [GenreController::class, 'index']);
 Route::get('comics', [ComicController::class, 'index']);
+// Profil creator publik (dari kartu komik / nama creator)
+Route::get('creators/{user}', [PublicCreatorController::class, 'show']);
 Route::get('comics/{comic}', [ComicController::class, 'show']);
 Route::get('comics/{comic}/episodes', [EpisodeController::class, 'index']);
 Route::get('episodes/{episode}', [EpisodeController::class, 'show']);

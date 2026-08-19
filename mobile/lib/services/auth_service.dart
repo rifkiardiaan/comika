@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/constants/api_constants.dart';
@@ -5,8 +7,7 @@ import '../models/user.dart';
 import 'api_service.dart';
 
 /// Manajemen autentikasi & sesi user.
-/// Token disimpan di memori (MVP) — persisten via shared_preferences
-/// dapat ditambahkan di fase berikutnya.
+/// Token disimpan persisten via shared_preferences.
 class AuthService extends ChangeNotifier {
   AuthService._() {
     _api = ApiService.instance;
@@ -23,9 +24,22 @@ class AuthService extends ChangeNotifier {
   bool get isLoggedIn => _user != null;
   bool get isInitialized => _initialized;
 
-  /// Cek sesi tersimpan (token). Tanpa penyimpanan persisten,
-  /// MVP dimulai dari layar login.
+  /// Cek sesi tersimpan (token). Jika token ada, ambil data user dari server.
   Future<void> init() async {
+    await _api.loadToken();
+
+    if (_api.token != null) {
+      try {
+        final res = await _api.get(ApiConstants.me);
+        final data = res['data'] as Map<String, dynamic>;
+        _user = User.fromJson(data);
+      } catch (_) {
+        // Token expired/invalid — bersihkan
+        _api.clearToken();
+        _user = null;
+      }
+    }
+
     _initialized = true;
     notifyListeners();
   }
@@ -89,6 +103,51 @@ class AuthService extends ChangeNotifier {
   /// Ubah nama tampilan.
   Future<User> updateProfile({required String name}) async {
     final res = await _api.put(ApiConstants.meProfile, {'name': name});
+    final user = User.fromJson(res['data'] as Map<String, dynamic>);
+    _user = user;
+    notifyListeners();
+    return user;
+  }
+
+  /// Hapus avatar — kembalikan ke fallback inisial.
+  Future<User> deleteAvatar() async {
+    final res = await _api.delete(ApiConstants.meAvatar);
+    final user = User.fromJson(res['data'] as Map<String, dynamic>);
+    _user = user;
+    notifyListeners();
+    return user;
+  }
+
+  /// Upload avatar.
+  Future<User> uploadAvatar(String filePath) async {
+    final fileName = filePath.split('/').last;
+    final ext = fileName.split('.').last.toLowerCase();
+    final mime = switch (ext) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+
+    final file = await File(filePath).readAsBytes();
+    final multipart = MultipartFile(
+      field: 'avatar',
+      filename: fileName,
+      contentType: mime,
+      bytes: file,
+    );
+
+    final form = <String, String>{
+      '_method': 'PUT',
+      'name': _user?.name ?? '',
+    };
+
+    final res = await _api.upload(
+      ApiConstants.meProfile,
+      form,
+      [multipart],
+      method: 'POST',
+    );
     final user = User.fromJson(res['data'] as Map<String, dynamic>);
     _user = user;
     notifyListeners();

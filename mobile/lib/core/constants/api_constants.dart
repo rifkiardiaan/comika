@@ -27,10 +27,12 @@ class ApiConstants {
   static const String me = '$baseUrl/auth/me';
   static const String mePassword = '$baseUrl/auth/me/password';
   static const String meProfile = '$baseUrl/auth/me/profile';
+  static const String meAvatar = '$baseUrl/auth/me/avatar';
 
   // Komik & genre
   static const String comics = '$baseUrl/comics';
   static const String genres = '$baseUrl/genres';
+  static String comicsSearch(String q) => '$comics?q=$q';
 
   // Reader
   static const String history = '$baseUrl/reader/history';

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
@@ -19,6 +20,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   GamificationProfile? _gamification;
   bool _loadingGamification = false;
+  bool _uploadingAvatar = false;
+  bool _deletingAvatar = false;
 
   @override
   void initState() {
@@ -40,10 +43,115 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// Panggil ulang bila user sudah login namun ringkasan belum dimuat
-  /// (mis. login ulang dalam sesi yang sama tanpa membangun ulang layar).
   void _ensureGamificationLoaded() {
     if (AuthService.instance.user != null && _gamification == null) {
       _loadGamification();
+    }
+  }
+
+  Future<void> _deleteAvatar() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Avatar'),
+        content: const Text('Foto profil akan dihapus dan diganti dengan inisial nama.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _deletingAvatar = true);
+    try {
+      await AuthService.instance.deleteAvatar();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Avatar berhasil dihapus.')),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal menghapus avatar.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _deletingAvatar = false);
+    }
+  }
+
+  void _showAvatarOptions() {
+    final hasAvatar = AuthService.instance.user?.avatarUrl != null &&
+        AuthService.instance.user!.avatarUrl!.isNotEmpty;
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Ubah Foto Profil'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _pickAndUploadAvatar();
+              },
+            ),
+            if (hasAvatar)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                title: const Text('Hapus Foto Profil', style: TextStyle(color: Colors.redAccent)),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _deleteAvatar();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+
+    setState(() => _uploadingAvatar = true);
+    try {
+      await AuthService.instance.uploadAvatar(picked.path);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Avatar berhasil diperbarui.')),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengupload avatar.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
     }
   }
 
@@ -199,52 +307,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Header user
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppTheme.brand.withValues(alpha: 0.4), AppTheme.surface],
+          // Header user dengan avatar yang bisa diklik
+          GestureDetector(
+            onTap: _uploadingAvatar || _deletingAvatar ? null : _showAvatarOptions,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppTheme.brand.withValues(alpha: 0.4), AppTheme.surface],
+                ),
+                borderRadius: BorderRadius.circular(18),
               ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: [
-                _buildAvatar(user),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              user.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                            ),
+                      _buildAvatar(user),
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: AppTheme.brand,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.surface, width: 2),
                           ),
-                          const SizedBox(width: 6),
-                          _roleChip(user.role),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text('@${user.username}', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${user.coinBalance} koin',
-                        style: const TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.w700),
+                          child: _uploadingAvatar || _deletingAvatar
+                              ? const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
+                                )
+                              : const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                user.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _roleChip(user.role),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text('@${user.username}', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${user.coinBalance} koin',
+                          style: const TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+
+          if (_uploadingAvatar)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Mengupload avatar...',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+              ),
+            ),
+
           const SizedBox(height: 16),
 
           // Notifikasi verifikasi email (jika belum diverifikasi)

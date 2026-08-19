@@ -154,6 +154,25 @@ class AuthController extends Controller
     }
 
     /**
+     * Hapus avatar profil — kembalikan ke fallback inisial.
+     */
+    public function deleteAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->avatar_url) {
+            Storage::disk('public')->delete($user->avatar_url);
+            $user->update(['avatar_url' => null]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Avatar berhasil dihapus.',
+            'data' => new UserResource($user->fresh()),
+        ]);
+    }
+
+    /**
      * Ganti password akun — butuh password saat ini.
      * Token lain ikut dicabut agar sesi di perangkat lain harus login ulang.
      */

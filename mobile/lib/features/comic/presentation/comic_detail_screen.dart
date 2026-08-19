@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../models/comic.dart';
@@ -213,6 +215,14 @@ class _ComicDetailScreenState extends State<ComicDetailScreen> {
                               setState(() => _followed = v);
                             }),
                           ),
+                          const SizedBox(width: 8),
+                          _actionButton(
+                            icon: Icons.share,
+                            active: false,
+                            activeColor: AppTheme.brand,
+                            label: 'Bagikan',
+                            onTap: () => _shareComic(comic),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -258,6 +268,14 @@ class _ComicDetailScreenState extends State<ComicDetailScreen> {
       MaterialPageRoute(
         builder: (_) => ReaderScreen(comicId: widget.comicId, episodeId: episodeId),
       ),
+    );
+  }
+
+  void _shareComic(Comic comic) {
+    final url = 'https://comika.app/comics/${comic.id}';
+    Share.share(
+      'Cek komik "${comic.title}" di COMIKA! 🎨\n$url',
+      subject: comic.title,
     );
   }
 
@@ -351,32 +369,11 @@ class _Header extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Cover
-                Container(
-                  width: 110,
-                  height: 150,
-                  decoration: BoxDecoration(
+                  // Cover
+                  ClipRRect(
                     borderRadius: BorderRadius.circular(14),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF1E1B4B), Color(0xFF7C3AED)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
+                    child: _CoverImage(comic: comic),
                   ),
-                  child: Center(
-                    child: Text(
-                      comic.title.isEmpty ? 'C' : comic.title.characters.first.toUpperCase(),
-                      style: const TextStyle(fontSize: 44, fontWeight: FontWeight.w800, color: Colors.white70),
-                    ),
-                  ),
-                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -411,6 +408,69 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Cover image untuk header detail komik.
+class _CoverImage extends StatelessWidget {
+  final Comic comic;
+
+  const _CoverImage({required this.comic});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = ApiConstants.assetUrl(comic.coverUrl);
+    if (url.isNotEmpty) {
+      return Container(
+        width: 110,
+        height: 150,
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Image.network(
+          url,
+          width: 110,
+          height: 150,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _fallback(),
+        ),
+      );
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    return Container(
+      width: 110,
+      height: 150,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E1B4B), Color(0xFF7C3AED)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          comic.title.isEmpty ? 'C' : comic.title.characters.first.toUpperCase(),
+          style: const TextStyle(fontSize: 44, fontWeight: FontWeight.w800, color: Colors.white70),
         ),
       ),
     );
