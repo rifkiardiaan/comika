@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertCircle, Coins, Loader2, Search, Trash2 } from 'lucide-react'
+import Avatar from '../../components/Avatar'
 import PageHeader from '../../components/admin/PageHeader'
 import { RoleBadge } from '../../components/admin/Badge'
 import Pagination from '../../components/admin/Pagination'
@@ -171,9 +172,7 @@ export default function AdminUsersPage() {
                   <tr key={u.id} className="transition-colors hover:bg-surface-800/30">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-pink-500 text-xs font-bold text-white">
-                          {u.name[0]?.toUpperCase()}
-                        </span>
+                        <Avatar name={u.name} avatarUrl={u.avatar_url} size={36} className="rounded-full" />
                         <div className="min-w-0">
                           <p className="truncate font-medium text-surface-100">{u.name}</p>
                           <p className="truncate text-xs text-surface-500">

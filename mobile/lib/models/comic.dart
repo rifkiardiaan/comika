@@ -11,7 +11,9 @@ class Comic {
   final int ratingCount;
   final int viewCount;
   final int likeCount;
+  final int creatorId;
   final String creatorName;
+  final String? creatorAvatarUrl;
   final List<String> genres;
   final int episodeCount;
 
@@ -25,7 +27,9 @@ class Comic {
     required this.ratingCount,
     required this.viewCount,
     required this.likeCount,
+    required this.creatorId,
     required this.creatorName,
+    this.creatorAvatarUrl,
     required this.genres,
     required this.episodeCount,
   });
@@ -46,7 +50,9 @@ class Comic {
       ratingCount: json['rating_count'] as int? ?? 0,
       viewCount: json['view_count'] as int? ?? 0,
       likeCount: json['like_count'] as int? ?? 0,
+      creatorId: (creator['id'] as num?)?.toInt() ?? 0,
       creatorName: creator['name'] as String? ?? '',
+      creatorAvatarUrl: creator['avatar_url'] as String?,
       genres: genreList,
       episodeCount: json['episode_count'] as int? ?? 0,
     );

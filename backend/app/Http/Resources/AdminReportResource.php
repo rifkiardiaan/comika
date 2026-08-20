@@ -54,6 +54,7 @@ class AdminReportResource extends JsonResource
                 'id' => $this->reporter_id,
                 'name' => $this->whenLoaded('reporter', fn () => $this->reporter?->name, null),
                 'username' => $this->whenLoaded('reporter', fn () => $this->reporter?->username, null),
+                'avatar_url' => $this->whenLoaded('reporter', fn () => $this->reporter?->avatar_url, null),
             ],
             'reportable_type' => $this->reportable_type,
             'reportable_id' => $this->reportable_id,

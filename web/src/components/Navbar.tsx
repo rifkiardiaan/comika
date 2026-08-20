@@ -117,12 +117,12 @@ export default function Navbar() {
         </form>
 
         {/* Auth / user */}
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {user ? (
             <div className="relative" ref={menuRef}>
               <Link
                 to="/wallet"
-                className="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-300 transition-colors hover:border-amber-500/60 sm:flex"
+                className="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 transition-colors hover:border-amber-500/60 sm:flex"
                 title="Dompet koin"
               >
                 <Coins size={13} />
@@ -131,17 +131,17 @@ export default function Navbar() {
               <NotificationBell />
               <button
                 onClick={() => setMenuOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border border-surface-800 bg-surface-900 py-1 pl-1 pr-3 transition-colors hover:border-brand-500/50"
+                className="flex items-center gap-1.5 rounded-full border border-surface-800 bg-surface-900 py-1 pl-1 pr-2 sm:pr-3 transition-colors hover:border-brand-500/50"
               >
                 <Avatar name={user.name} avatarUrl={user.avatar_url} size={32} className="rounded-full" />
-                <span className="hidden max-w-28 truncate text-sm font-medium text-surface-100 sm:block">
+                <span className="hidden max-w-24 truncate text-sm font-medium text-surface-100 md:block">
                   {user.name.split(' ')[0]}
                 </span>
-                <ChevronDown size={14} className="text-surface-400" />
+                <ChevronDown size={14} className="hidden text-surface-400 sm:block" />
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-12 w-56 overflow-hidden rounded-xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/50">
+                <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/50">
                   <div className="border-b border-surface-800 px-4 py-3">
                     <p className="truncate text-sm font-semibold text-surface-100">{user.name}</p>
                     <p className="truncate text-xs text-surface-400">@{user.username}</p>

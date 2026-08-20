@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
+import Avatar from '../../components/Avatar'
 import PageHeader from '../../components/admin/PageHeader'
 import { RoleBadge, StatusBadge } from '../../components/admin/Badge'
 import EmptyState from '../../components/admin/EmptyState'
@@ -164,9 +165,7 @@ export default function AdminDashboardPage() {
             <ul className="divide-y divide-surface-800/60">
               {stats.recent_users.map((u) => (
                 <li key={u.id} className="flex items-center gap-3 px-5 py-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-pink-500 text-xs font-bold text-white">
-                    {u.name[0]?.toUpperCase()}
-                  </span>
+                  <Avatar name={u.name} avatarUrl={u.avatar_url} size={36} className="rounded-full" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-surface-100">{u.name}</p>
                     <p className="truncate text-xs text-surface-500">@{u.username}</p>

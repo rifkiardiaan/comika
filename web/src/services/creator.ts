@@ -50,8 +50,11 @@ export const creator = {
     if (payload.display_name !== undefined) form.append('display_name', payload.display_name)
     if (payload.bio !== undefined) form.append('bio', payload.bio)
     if (payload.banner) form.append('banner', payload.banner)
+    // Upload file (banner) via POST + method spoofing agar file benar-benar
+    // sampai ke backend (PUT multipart tidak diparse di sebagian server).
+    form.append('_method', 'PUT')
 
-    const { data } = await api.put<{ data: CreatorProfile }>('/creator/profile', form)
+    const { data } = await api.post<{ data: CreatorProfile }>('/creator/profile', form)
     return data.data
   },
 }

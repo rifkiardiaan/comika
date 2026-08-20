@@ -47,7 +47,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-surface-950 via-surface-950/80 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-surface-950 via-transparent to-surface-950/40" />
 
-        <div className="relative mx-auto flex max-w-7xl flex-col gap-10 px-4 py-16 sm:px-6 lg:flex-row lg:items-center lg:py-24">
+        <div className="relative mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 sm:py-16 lg:flex-row lg:items-center lg:gap-10 lg:py-24">
           <div className="max-w-xl">
             {heroLoading ? (
               <>
@@ -61,10 +61,10 @@ export default function HomePage() {
                 <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur">
                   <Flame size={13} className="text-amber-300" /> Sedang Trending
                 </span>
-                <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-white sm:text-5xl">
+                <h1 className="mt-4 font-display text-2xl font-bold leading-tight text-white sm:text-3xl lg:text-5xl">
                   {hero!.title}
                 </h1>
-                <p className="mt-3 line-clamp-3 max-w-lg text-base leading-relaxed text-surface-200/90">
+                <p className="mt-3 line-clamp-3 max-w-lg text-sm leading-relaxed text-surface-200/90 sm:text-base">
                   {hero!.synopsis}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -76,7 +76,7 @@ export default function HomePage() {
                 </div>
               </>
             )}
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-3 sm:mt-8">
               {hero && (
                 <Link
                   to={`/comic/${hero.id}`}

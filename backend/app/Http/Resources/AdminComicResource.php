@@ -30,6 +30,7 @@ class AdminComicResource extends JsonResource
             'creator' => [
                 'id' => $this->creator_id,
                 'name' => $this->whenLoaded('creator', fn () => $this->creator->name, null),
+                'avatar_url' => $this->whenLoaded('creator', fn () => $this->creator->avatar_url, null),
             ],
             'published_at' => $this->published_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

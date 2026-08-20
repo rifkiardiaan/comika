@@ -13,6 +13,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react'
+import Avatar from '../../components/Avatar'
 import PageHeader from '../../components/admin/PageHeader'
 import { Badge } from '../../components/admin/Badge'
 import Pagination from '../../components/admin/Pagination'
@@ -273,9 +274,12 @@ export default function AdminTransactionsPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           {tx.user ? (
-                            <div>
-                              <p className="text-surface-200">{tx.user.name}</p>
-                              <p className="text-xs text-surface-500">@{tx.user.username}</p>
+                            <div className="flex items-center gap-2.5">
+                              <Avatar name={tx.user.name} avatarUrl={tx.user.avatar_url} size={30} className="rounded-full" />
+                              <div>
+                                <p className="text-surface-200">{tx.user.name}</p>
+                                <p className="text-xs text-surface-500">@{tx.user.username}</p>
+                              </div>
                             </div>
                           ) : (
                             <span className="text-surface-500">—</span>
@@ -361,9 +365,12 @@ export default function AdminTransactionsPage() {
                       <tr key={w.id} className="transition-colors hover:bg-surface-800/30">
                         <td className="px-5 py-3.5">
                           {w.creator ? (
-                            <div>
-                              <p className="text-surface-200">{w.creator.name}</p>
-                              <p className="text-xs text-surface-500">@{w.creator.username}</p>
+                            <div className="flex items-center gap-2.5">
+                              <Avatar name={w.creator.name} avatarUrl={w.creator.avatar_url} size={30} className="rounded-full" />
+                              <div>
+                                <p className="text-surface-200">{w.creator.name}</p>
+                                <p className="text-xs text-surface-500">@{w.creator.username}</p>
+                              </div>
                             </div>
                           ) : (
                             <span className="text-surface-500">—</span>

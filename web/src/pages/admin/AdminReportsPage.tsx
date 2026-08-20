@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertCircle, FileText, Flag, Loader2, ShieldCheck, X } from 'lucide-react'
 import PageHeader from '../../components/admin/PageHeader'
+import Avatar from '../../components/Avatar'
 import { Badge, StatusBadge } from '../../components/admin/Badge'
 import Pagination from '../../components/admin/Pagination'
 import EmptyState from '../../components/admin/EmptyState'
@@ -140,14 +141,17 @@ export default function AdminReportsPage() {
                         <span className="truncate font-medium">· {r.reportable?.title ?? '#' + r.reportable_id}</span>
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-surface-400">
+                    <td className="px-5 py-3.5">
                       {r.reporter ? (
-                        <div>
-                          <p className="text-surface-300">{r.reporter.name}</p>
-                          <p className="text-xs text-surface-500">@{r.reporter.username}</p>
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={r.reporter.name} avatarUrl={r.reporter.avatar_url} size={32} />
+                          <div>
+                            <p className="text-surface-300">{r.reporter.name}</p>
+                            <p className="text-xs text-surface-500">@{r.reporter.username}</p>
+                          </div>
                         </div>
                       ) : (
-                        '—'
+                        <span className="text-surface-400">—</span>
                       )}
                     </td>
                     <td className="px-5 py-3.5">

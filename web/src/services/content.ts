@@ -1,5 +1,5 @@
 import api from './api'
-import type { Comic, ComicDetail, Episode, EpisodeDetail, EpisodePage, Genre } from '../types'
+import type { Comic, ComicDetail, Episode, EpisodeDetail, EpisodePage, Genre, PublicCreator } from '../types'
 
 export const content = {
   /** Daftar komik publik dengan filter & pagination. */
@@ -35,6 +35,12 @@ export const content = {
     return data.data
   },
 
+  /** Profil creator publik — dari kartu komik / nama creator. */
+  async creator(id: number | string): Promise<PublicCreator> {
+    const { data } = await api.get<{ data: PublicCreator }>(`/creators/${id}`)
+    return data.data
+  },
+
   /** Daftar genre — publik. */
   async genres(): Promise<Genre[]> {
     const { data } = await api.get<{ data: Genre[] }>('/genres')
@@ -51,7 +57,10 @@ export const content = {
 
   /** Update komik milik creator. */
   async updateComic(id: number, payload: FormData): Promise<Comic> {
-    const { data } = await api.put<{ data: Comic }>(`/comics/${id}`, payload)
+    // Upload cover via POST + method spoofing agar file benar-benar sampai
+    // (PUT multipart tidak diparse di sebagian server).
+    payload.append('_method', 'PUT')
+    const { data } = await api.post<{ data: Comic }>(`/comics/${id}`, payload)
     return data.data
   },
 

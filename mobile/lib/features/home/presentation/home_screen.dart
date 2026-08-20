@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           const _NotificationBell(),
-          const SizedBox(width: 4),
+          const SizedBox(width: 12),
         ],
       ),
       body: SafeArea(
@@ -402,8 +402,8 @@ class _NotificationBellState extends State<_NotificationBell> {
         ),
         if (_unread > 0)
           Positioned(
-            right: 2,
-            top: 2,
+            right: 4,
+            top: 4,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               constraints: const BoxConstraints(minWidth: 16, minHeight: 16),

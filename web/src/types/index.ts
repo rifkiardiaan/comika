@@ -49,7 +49,7 @@ export interface Comic {
   rating_count: number
   like_count: number
   view_count: number
-  creator: { id: number; name: string }
+  creator: { id: number; name: string; avatar_url: string | null }
   genres: Genre[]
   episode_count: number
   created_at: string
@@ -99,6 +99,25 @@ export interface ComicDetail extends Comic {
     is_completed: boolean
     updated_at: string
   } | null
+}
+
+/** Profil creator publik (halaman /creators/:id). */
+export interface PublicCreator {
+  id: number
+  username: string
+  display_name: string
+  bio: string | null
+  avatar_url: string | null
+  banner_url: string | null
+  is_verified: boolean
+  stats: {
+    total_comics: number
+    total_episodes: number
+    total_views: number
+    total_likes: number
+    follower_count: number
+  }
+  comics: Comic[]
 }
 
 /* ------------------------------------------------------------------ */
@@ -458,11 +477,11 @@ export interface AiOutlineResult {
 /* ------------------------------------------------------------------ */
 
 export interface AdminTransaction extends Transaction {
-  user: { id: number; name: string; username: string; email: string } | null
+  user: { id: number; name: string; username: string; email: string; avatar_url: string | null } | null
 }
 
 export interface AdminWithdrawal extends Withdrawal {
-  creator: { id: number; name: string; username: string; email: string } | null
+  creator: { id: number; name: string; username: string; email: string; avatar_url: string | null } | null
 }
 
 /* ------------------------------------------------------------------ */
@@ -529,7 +548,7 @@ export interface AdminReport {
   description: string | null
   status: ReportStatus
   admin_note: string | null
-  reporter: { id: number; name: string; username: string } | null
+  reporter: { id: number; name: string; username: string; avatar_url: string | null } | null
   reportable_type: string
   reportable_id: number
   reportable: { type: string; id: number; title: string } | null

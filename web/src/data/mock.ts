@@ -68,7 +68,7 @@ export const mockComics: Comic[] = comicDefs.map((c, i) => ({
   rating_count: Math.floor(c.likes / 3),
   like_count: c.likes,
   view_count: c.views,
-  creator: { id: (i % 4) + 1, name: ['Studio Kertas', 'Malam Karya', 'Tinta Utara', 'Cerita Hujan'][i % 4] },
+  creator: { id: (i % 4) + 1, name: ['Studio Kertas', 'Malam Karya', 'Tinta Utara', 'Cerita Hujan'][i % 4], avatar_url: null },
   genres: g(c.genreIds),
   episode_count: 12 + ((i * 7) % 60),
   created_at: '2026-01-01T00:00:00.000Z',

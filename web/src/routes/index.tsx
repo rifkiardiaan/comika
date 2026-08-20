@@ -6,6 +6,7 @@ import HomePage from '../pages/HomePage'
 import DiscoverPage from '../pages/DiscoverPage'
 import SearchPage from '../pages/SearchPage'
 import ComicDetailPage from '../pages/ComicDetailPage'
+import CreatorPublicPage from '../pages/CreatorPublicPage'
 import EpisodeReaderPage from '../pages/EpisodeReaderPage'
 import LibraryPage from '../pages/LibraryPage'
 import HistoryPage from '../pages/HistoryPage'
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: 'search', element: <SearchPage /> },
       { path: 'comic/:id', element: <ComicDetailPage /> },
       { path: 'comic/:id/episode/:episodeId', element: <EpisodeReaderPage /> },
+      { path: 'creators/:id', element: <CreatorPublicPage /> },
       { path: 'library', element: <LibraryPage /> },
       { path: 'history', element: <HistoryPage /> },
       { path: 'gamification', element: <GamificationPage /> },

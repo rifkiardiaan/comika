@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../models/comic.dart';
 import '../../../core/utils/formatters.dart';
 
@@ -19,11 +20,6 @@ class ComicCard extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF1E1B4B), Color(0xFF7C3AED)],
-              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.3),
@@ -32,41 +28,9 @@ class ComicCard extends StatelessWidget {
                 ),
               ],
             ),
-            child: Stack(
-              children: [
-                Center(
-                  child: Text(
-                    _initial(),
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 8,
-                  bottom: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.star, size: 11, color: Colors.amber),
-                        const SizedBox(width: 2),
-                        Text(
-                          comic.ratingAvg.toStringAsFixed(1),
-                          style: const TextStyle(fontSize: 10, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: _buildCoverImage(),
             ),
           ),
         ),
@@ -85,6 +49,100 @@ class ComicCard extends StatelessWidget {
           style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
         ),
       ],
+    );
+  }
+
+  Widget _buildCoverImage() {
+    final coverUrl = ApiConstants.assetUrl(comic.coverUrl);
+
+    if (coverUrl.isNotEmpty) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            coverUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return _gradientFallback();
+            },
+            errorBuilder: (context, error, stack) => _gradientFallback(),
+          ),
+          // Rating badge
+          Positioned(
+            left: 6,
+            bottom: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star, size: 10, color: Colors.amber),
+                  const SizedBox(width: 2),
+                  Text(
+                    comic.ratingAvg.toStringAsFixed(1),
+                    style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return _gradientFallback();
+  }
+
+  Widget _gradientFallback() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E1B4B), Color(0xFF7C3AED)],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              _initial(),
+              style: const TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.w800,
+                color: Colors.white70,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 6,
+            bottom: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star, size: 10, color: Colors.amber),
+                  const SizedBox(width: 2),
+                  Text(
+                    comic.ratingAvg.toStringAsFixed(1),
+                    style: const TextStyle(fontSize: 9, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

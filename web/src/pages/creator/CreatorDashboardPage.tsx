@@ -15,6 +15,7 @@ import {
   Star,
   Users,
 } from 'lucide-react'
+import Avatar from '../../components/Avatar'
 import PageHeader from '../../components/admin/PageHeader'
 import { StatusBadge } from '../../components/admin/Badge'
 import { auth } from '../../services/auth'
@@ -195,9 +196,7 @@ export default function CreatorDashboardPage() {
             <ul className="divide-y divide-surface-800/60">
               {data!.recent_comments.slice(0, 5).map((c) => (
                 <li key={c.id} className="flex items-start gap-3 px-5 py-3.5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-pink-500 text-xs font-bold text-white">
-                    {c.user.name[0]?.toUpperCase()}
-                  </span>
+                  <Avatar name={c.user.name} avatarUrl={c.user.avatar_url} size={36} className="rounded-full" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-surface-200">
                       <span className="font-semibold text-surface-100">{c.user.name}</span>{' '}

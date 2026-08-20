@@ -43,6 +43,11 @@ class AppTheme {
         selectedItemColor: brand,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
+        elevation: 12,
+        selectedIconTheme: IconThemeData(size: 24),
+        unselectedIconTheme: IconThemeData(size: 22),
+        selectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
       ),
     );
   }

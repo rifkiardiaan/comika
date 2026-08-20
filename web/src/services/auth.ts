@@ -116,9 +116,20 @@ export const auth = {
     const form = new FormData()
     form.append('name', payload.name)
     if (payload.avatar) form.append('avatar', payload.avatar)
+    // Upload file via PUT multipart tidak diparse oleh PHP dev server /
+    // sebagian server produksi — gunakan POST + method spoofing Laravel.
+    form.append('_method', 'PUT')
 
-    const { data } = await api.put<{ data: User }>('/auth/me/profile', form)
+    const { data } = await api.post<{ data: User }>('/auth/me/profile', form)
     // Perbarui user tersimpan agar Navbar & halaman lain ikut sinkron
+    const stored = this.getStoredUser()
+    this.setSession(this.getToken() ?? '', { ...stored, ...data.data })
+    return data.data
+  },
+
+  /** Hapus avatar — kembalikan ke fallback inisial. */
+  async deleteAvatar(): Promise<User> {
+    const { data } = await api.delete<{ data: User }>('/auth/me/avatar')
     const stored = this.getStoredUser()
     this.setSession(this.getToken() ?? '', { ...stored, ...data.data })
     return data.data

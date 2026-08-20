@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Eye, Heart, Star } from 'lucide-react'
+import Avatar from './Avatar'
 import type { Comic } from '../types'
 import { coverEmoji, coverKeyOf, coverStyle } from '../data/mock'
 import { formatNumber } from '../utils/format'
@@ -10,11 +11,20 @@ interface Props {
 }
 
 export default function ComicCard({ comic, compact = false }: Props) {
+  const navigate = useNavigate()
   const key = coverKeyOf(comic.id)
   return (
-    <Link
-      to={`/comic/${comic.id}`}
-      className="group block focus:outline-none"
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate(`/comic/${comic.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          navigate(`/comic/${comic.id}`)
+        }
+      }}
+      className="group block cursor-pointer focus:outline-none"
     >
       <div className="relative overflow-hidden rounded-2xl border border-surface-800 bg-surface-900 shadow-lg transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-500/60 group-hover:shadow-xl group-hover:shadow-brand-500/10">
         {/* Cover */}
@@ -50,7 +60,16 @@ export default function ComicCard({ comic, compact = false }: Props) {
           </h3>
           {!compact && (
             <>
-              <p className="line-clamp-1 text-xs text-surface-400">{comic.creator.name}</p>
+              <p className="flex items-center gap-1.5 text-xs text-surface-400">
+                <Avatar name={comic.creator.name} avatarUrl={comic.creator.avatar_url} size={16} className="rounded-full" />
+                <Link
+                  to={`/creators/${comic.creator.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="line-clamp-1 transition-colors hover:text-brand-300"
+                >
+                  {comic.creator.name}
+                </Link>
+              </p>
               <div className="flex flex-wrap gap-1 pt-0.5">
                 {comic.genres.slice(0, 2).map((gen) => (
                   <span
@@ -75,6 +94,6 @@ export default function ComicCard({ comic, compact = false }: Props) {
           )}
         </div>
       </div>
-    </Link>
+    </div>
   )
 }

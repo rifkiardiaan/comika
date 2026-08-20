@@ -15,6 +15,7 @@ import {
   Star,
   Users,
 } from 'lucide-react'
+import Avatar from '../components/Avatar'
 import { content } from '../services/content'
 import { community } from '../services/community'
 import { getApiErrorMessage } from '../utils/errors'
@@ -172,8 +173,15 @@ export default function ComicDetailPage() {
             <h1 className="mt-3 font-display text-3xl font-bold text-surface-50 sm:text-4xl">
               {comic.title}
             </h1>
-            <p className="mt-1 text-sm text-surface-300">
-              oleh <span className="font-medium text-brand-300">{comic.creator.name}</span>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-surface-300">
+              oleh
+              <Link
+                to={`/creators/${comic.creator.id}`}
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-brand-200"
+              >
+                <Avatar name={comic.creator.name} avatarUrl={comic.creator.avatar_url} size={20} className="rounded-full" />
+                <span className="font-medium text-brand-300">{comic.creator.name}</span>
+              </Link>
             </p>
 
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-surface-300">{comic.synopsis}</p>
@@ -197,7 +205,7 @@ export default function ComicDetailPage() {
             </div>
 
             {/* Actions */}
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-7 flex flex-wrap gap-2 sm:gap-3">
               <Link
                 to={firstReadable ? `/comic/${comic.id}/episode/${firstReadable.id}` : '#'}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-brand-600/25 transition-all hover:brightness-110"
@@ -207,7 +215,7 @@ export default function ComicDetailPage() {
               <button
                 onClick={() => toggle('follow')}
                 disabled={!user || busy === 'follow'}
-                className={`inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all sm:gap-2 sm:px-5 sm:py-3 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
                   followed
                     ? 'border-brand-500 bg-brand-500/15 text-brand-300'
                     : 'border-surface-700 bg-surface-900 text-surface-200 hover:border-brand-500/50'
@@ -219,7 +227,7 @@ export default function ComicDetailPage() {
               <button
                 onClick={() => toggle('like')}
                 disabled={!user || busy === 'like'}
-                className={`inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all sm:gap-2 sm:px-5 sm:py-3 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
                   liked
                     ? 'border-pink-500 bg-pink-500/15 text-pink-300'
                     : 'border-surface-700 bg-surface-900 text-surface-200 hover:border-pink-500/50'
@@ -231,7 +239,7 @@ export default function ComicDetailPage() {
               <button
                 onClick={() => toggle('bookmark')}
                 disabled={!user || busy === 'bookmark'}
-                className={`inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all sm:gap-2 sm:px-5 sm:py-3 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
                   bookmarked
                     ? 'border-amber-500 bg-amber-500/15 text-amber-300'
                     : 'border-surface-700 bg-surface-900 text-surface-200 hover:border-amber-500/50'
@@ -240,8 +248,8 @@ export default function ComicDetailPage() {
                 {bookmarked ? <Check size={16} /> : <Bookmark size={16} />}
                 {bookmarked ? 'Tersimpan' : 'Simpan'}
               </button>
-              <button className="inline-flex items-center gap-2 rounded-xl border border-surface-700 bg-surface-900 px-5 py-3 text-sm font-semibold text-surface-200 transition-colors hover:border-brand-500/50">
-                <Share2 size={16} /> Bagikan
+              <button className="inline-flex items-center gap-1.5 rounded-xl border border-surface-700 bg-surface-900 px-4 py-2.5 text-xs font-semibold text-surface-200 transition-colors hover:border-brand-500/50 sm:gap-2 sm:px-5 sm:py-3 sm:text-sm">
+                <Share2 size={14} className="sm:hidden" /><Share2 size={16} className="hidden sm:block" /> Bagikan
               </button>
             </div>
 
@@ -260,10 +268,8 @@ export default function ComicDetailPage() {
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Episodes + comments */}
-      <section className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-3">
+      </section>        {/* Episodes + comments */}
+      <section className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-10 sm:px-6 lg:grid-cols-3">
         {/* Episode list */}
         <div className="lg:col-span-2">
           <h2 className="font-display text-lg font-bold text-surface-50">Daftar Episode</h2>
@@ -348,12 +354,10 @@ export default function ComicDetailPage() {
             )}
             {comments.map((comment) => (
               <div key={comment.id} className="rounded-xl border border-surface-800 bg-surface-900 p-4">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-pink-500 text-xs font-bold text-white">
-                    {comment.user.name[0]}
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-surface-100">{comment.user.name}</p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar name={comment.user.name} avatarUrl={comment.user.avatar_url} size={32} className="shrink-0 rounded-full" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-surface-100">{comment.user.name}</p>
                     <p className="text-xs text-surface-400">{timeAgo(comment.created_at)}</p>
                   </div>
                 </div>
@@ -365,9 +369,7 @@ export default function ComicDetailPage() {
                   <div className="mt-4 space-y-3 border-l-2 border-surface-800 pl-4">
                     {comment.replies.map((reply) => (
                       <div key={reply.id} className="flex items-start gap-2.5">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-[10px] font-bold text-surface-300">
-                          {reply.user.name[0]}
-                        </span>
+                        <Avatar name={reply.user.name} avatarUrl={reply.user.avatar_url} size={24} className="rounded-full" />
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-surface-200">
                             {reply.user.name} <span className="font-normal text-surface-500">· {timeAgo(reply.created_at)}</span>

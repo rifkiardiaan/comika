@@ -30,6 +30,7 @@ class ComicResource extends JsonResource
             'creator' => [
                 'id' => $this->creator_id,
                 'name' => $this->whenLoaded('creator', fn () => $this->creator->name, null),
+                'avatar_url' => $this->whenLoaded('creator', fn () => $this->creator->avatar_url, null),
             ],
             'genres' => GenreResource::collection($this->whenLoaded('genres')),
             'published_at' => $this->published_at?->toIso8601String(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/comic.dart';
 import '../../../models/reading_history.dart';
@@ -210,18 +211,9 @@ class _HistoryList extends StatelessWidget {
                     padding: const EdgeInsets.all(14),
                     child: Row(
                       children: [
-                        Container(
-                          width: 48,
-                          height: 64,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFF1E1B4B), Color(0xFF7C3AED)]),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            (comic?.title.isNotEmpty ?? false) ? comic!.title.characters.first.toUpperCase() : 'C',
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white70),
-                          ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: _HistoryCover(comic: comic),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -276,6 +268,43 @@ class _HistoryList extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// Cover mini untuk item riwayat baca.
+class _HistoryCover extends StatelessWidget {
+  final Comic? comic;
+
+  const _HistoryCover({required this.comic});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = ApiConstants.assetUrl(comic?.coverUrl);
+    if (url.isNotEmpty) {
+      return Image.network(
+        url,
+        width: 48,
+        height: 64,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallback(),
+      );
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    return Container(
+      width: 48,
+      height: 64,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [Color(0xFF1E1B4B), Color(0xFF7C3AED)]),
+      ),
+      child: Text(
+        (comic?.title.isNotEmpty ?? false) ? comic!.title.characters.first.toUpperCase() : 'C',
+        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white70),
+      ),
     );
   }
 }

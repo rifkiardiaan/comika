@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertCircle, Eye, EyeOff, Heart, Loader2, MessageSquare, Search, Trash2 } from 'lucide-react'
+import Avatar from '../../components/Avatar'
 import PageHeader from '../../components/admin/PageHeader'
 import { Badge, StatusBadge } from '../../components/admin/Badge'
 import Pagination from '../../components/admin/Pagination'
@@ -156,9 +157,7 @@ export default function AdminCommentsPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-pink-500 text-[10px] font-bold text-white">
-                          {c.user.name[0]?.toUpperCase()}
-                        </span>
+                        <Avatar name={c.user.name} avatarUrl={c.user.avatar_url} size={28} className="rounded-full" />
                         <span className="truncate text-surface-300">{c.user.name}</span>
                       </div>
                     </td>

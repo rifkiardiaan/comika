@@ -23,7 +23,7 @@ class AdminTransactionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Transaction::query()
-            ->with(['user:id,name,username,email', 'unlocks.episode.comic'])
+            ->with(['user:id,name,username,email,avatar_url', 'unlocks.episode.comic'])
             ->orderByDesc('id');
 
         if ($request->filled('type')) {
@@ -56,6 +56,7 @@ class AdminTransactionController extends Controller
                     'name' => $transaction->user->name,
                     'username' => $transaction->user->username,
                     'email' => $transaction->user->email,
+                    'avatar_url' => $transaction->user->avatar_url,
                 ]
                 : null;
 
@@ -81,7 +82,7 @@ class AdminTransactionController extends Controller
     public function withdrawals(Request $request): JsonResponse
     {
         $query = Withdrawal::query()
-            ->with(['creator:id,name,username,email'])
+            ->with(['creator:id,name,username,email,avatar_url'])
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->orderByDesc('id');
 
@@ -108,6 +109,7 @@ class AdminTransactionController extends Controller
                     'name' => $withdrawal->creator->name,
                     'username' => $withdrawal->creator->username,
                     'email' => $withdrawal->creator->email,
+                    'avatar_url' => $withdrawal->creator->avatar_url,
                 ]
                 : null;
 

@@ -16,6 +16,7 @@ import {
   Mail,
   Palette,
   Shield,
+  Trash2,
   User as UserIcon,
 } from 'lucide-react'
 import Avatar from '../components/Avatar'
@@ -54,6 +55,7 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState('')
+  const [deletingAvatar, setDeletingAvatar] = useState(false)
 
   // Web push notification (browser)
   const [pushState, setPushState] = useState<'checking' | 'unsupported' | 'on' | 'off'>('checking')
@@ -179,6 +181,24 @@ export default function ProfilePage() {
     setAvatarPreview(file ? URL.createObjectURL(file) : null)
   }
 
+  const handleDeleteAvatar = async () => {
+    const hasAvatar = user.avatar_url && user.avatar_url.length > 0
+    if (!hasAvatar) return
+    const confirmed = window.confirm('Foto profil akan dihapus dan diganti dengan inisial nama.')
+    if (!confirmed) return
+    setDeletingAvatar(true)
+    try {
+      const updated = await auth.deleteAvatar()
+      setUser(updated)
+      setProfileName(updated.name)
+      setNotice('Avatar berhasil dihapus.')
+    } catch (err) {
+      setProfileError(getApiErrorMessage(err, 'Gagal menghapus avatar.'))
+    } finally {
+      setDeletingAvatar(false)
+    }
+  }
+
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setPwError('')
@@ -227,8 +247,21 @@ export default function ProfilePage() {
       {/* ====== Kartu identitas ====== */}
       <section className="relative overflow-hidden rounded-3xl border border-surface-800 bg-gradient-to-br from-brand-900/40 via-surface-900 to-surface-900 p-8">
         <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-brand-500/15 blur-3xl" />
-        <div className="relative flex flex-wrap items-center gap-6">
-          <Avatar name={user.name} avatarUrl={user.avatar_url} size={80} className="shadow-xl shadow-brand-500/30" />
+        <div className="relative flex flex-wrap items-center gap-4 sm:gap-6">
+          <div className="relative">
+            <Avatar name={user.name} avatarUrl={user.avatar_url} size={80} className="shadow-xl shadow-brand-500/30" />
+            {user.avatar_url && (
+              <button
+                type="button"
+                onClick={handleDeleteAvatar}
+                disabled={deletingAvatar}
+                title="Hapus foto profil"
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-surface-900 bg-red-500 text-white shadow-lg transition-colors hover:bg-red-600 disabled:opacity-60"
+              >
+                {deletingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+              </button>
+            )}
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display text-2xl font-bold text-surface-50">{user.name}</h2>
@@ -342,16 +375,29 @@ export default function ProfilePage() {
               className="shadow-lg shadow-black/30"
             />
             <div className="flex-1">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-surface-700 bg-surface-950 px-4 py-2.5 text-sm font-medium text-surface-200 transition-colors hover:border-brand-500/60 hover:text-surface-50">
-                {avatarFile ? <CheckCircle2 size={15} className="text-emerald-400" /> : <UserIcon size={15} />}
-                {avatarFile ? 'Ganti Foto (baru dipilih)' : 'Pilih Foto Avatar'}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => handleAvatarChange(e.target.files?.[0])}
-                />
-              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-surface-700 bg-surface-950 px-4 py-2.5 text-sm font-medium text-surface-200 transition-colors hover:border-brand-500/60 hover:text-surface-50">
+                  {avatarFile ? <CheckCircle2 size={15} className="text-emerald-400" /> : <UserIcon size={15} />}
+                  {avatarFile ? 'Ganti Foto (baru dipilih)' : 'Pilih Foto Avatar'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => handleAvatarChange(e.target.files?.[0])}
+                  />
+                </label>
+                {user.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAvatar}
+                    disabled={deletingAvatar}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2.5 text-sm font-medium text-red-400 transition-colors hover:border-red-500/60 hover:bg-red-500/10 disabled:opacity-60"
+                  >
+                    {deletingAvatar ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    Hapus
+                  </button>
+                )}
+              </div>
               <p className="mt-1.5 text-[11px] text-surface-500">
                 JPEG, PNG, atau WebP — maksimal 2MB
               </p>

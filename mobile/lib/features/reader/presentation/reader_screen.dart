@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/episode.dart';
 import '../../../services/api_service.dart';
@@ -180,11 +181,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       return _buildEpisodeNav(detail);
                     }
                     final page = detail.pages[index];
+                    final imageUrl = ApiConstants.assetUrl(page.imageUrl);
                     return Column(
                       children: [
-                        if (page.imageUrl.isNotEmpty)
+                        if (imageUrl.isNotEmpty)
                           Image.network(
-                            page.imageUrl,
+                            imageUrl,
                             width: double.infinity,
                             fit: BoxFit.contain,
                             loadingBuilder: (context, child, progress) {
