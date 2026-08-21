@@ -17,7 +17,6 @@ import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
 import ForgotPasswordPage from '../pages/ForgotPasswordPage'
 import ResetPasswordPage from '../pages/ResetPasswordPage'
-import VerifyEmailPage from '../pages/VerifyEmailPage'
 import WalletPage from '../pages/WalletPage'
 import CreatorEarningsPage from '../pages/CreatorEarningsPage'
 import CreatorAiPage from '../pages/creator/CreatorAiPage'
@@ -26,6 +25,9 @@ import CreatorComicsPage from '../pages/creator/CreatorComicsPage'
 import CreatorComicDetailPage from '../pages/creator/CreatorComicDetailPage'
 import CreatorAnalyticsPage from '../pages/creator/CreatorAnalyticsPage'
 import ComingSoonPage from '../pages/ComingSoonPage'
+import BantuanPage from '../pages/BantuanPage'
+import KomunitasPage from '../pages/KomunitasPage'
+import BecomeCreatorPage from '../pages/BecomeCreatorPage'
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
 import AdminCreatorsPage from '../pages/admin/AdminCreatorsPage'
@@ -34,6 +36,7 @@ import AdminCommentsPage from '../pages/admin/AdminCommentsPage'
 import AdminReportsPage from '../pages/admin/AdminReportsPage'
 import AdminGenresPage from '../pages/admin/AdminGenresPage'
 import AdminTransactionsPage from '../pages/admin/AdminTransactionsPage'
+import AdminCreatorApplicationsPage from '../pages/admin/AdminCreatorApplicationsPage'
 
 export const router = createBrowserRouter([
   {
@@ -62,7 +65,9 @@ export const router = createBrowserRouter([
       { path: 'register', element: <RegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
-      { path: 'verify-email', element: <VerifyEmailPage /> },
+      { path: 'bantuan', element: <BantuanPage /> },
+      { path: 'komunitas', element: <KomunitasPage /> },
+      { path: 'become-creator', element: <BecomeCreatorPage /> },
       { path: '*', element: <ComingSoonPage title="Halaman Tidak Ditemukan" /> },
     ],
   },
@@ -82,6 +87,7 @@ export const router = createBrowserRouter([
       { path: 'reports', element: <AdminReportsPage /> },
       { path: 'genres', element: <AdminGenresPage /> },
       { path: 'transactions', element: <AdminTransactionsPage /> },
+      { path: 'creator-applications', element: <AdminCreatorApplicationsPage /> },
     ],
   },
 ])

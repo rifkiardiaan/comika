@@ -5,10 +5,11 @@ import {
   BookOpen,
   ChevronDown,
   Coins,
-  Compass,
+  HelpCircle,
   Library,
   LogOut,
   Menu,
+  MessageCircle,
   Palette,
   Search,
   Shield,
@@ -25,8 +26,9 @@ import type { User as UserType } from '../types'
 
 const links = [
   { to: '/', label: 'Beranda', icon: BookOpen, end: true },
-  { to: '/discover', label: 'Jelajahi', icon: Compass },
   { to: '/library', label: 'Perpustakaan', icon: Library },
+  { to: '/bantuan', label: 'Bantuan', icon: HelpCircle },
+  { to: '/komunitas', label: 'Komunitas', icon: MessageCircle },
 ]
 
 export default function Navbar() {
@@ -117,9 +119,18 @@ export default function Navbar() {
         </form>
 
         {/* Auth / user */}
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {/* Mobile hamburger — paling kiri di mobile */}
+          <button
+            onClick={() => setMobileOpen((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-surface-800 text-surface-300 transition-colors hover:text-surface-50 md:hidden"
+            aria-label="Menu"
+          >
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+
           {user ? (
-            <div className="relative" ref={menuRef}>
+            <div className="relative flex items-center gap-1.5 overflow-visible sm:gap-2" ref={menuRef}>
               <Link
                 to="/wallet"
                 className="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 transition-colors hover:border-amber-500/60 sm:flex"
@@ -141,7 +152,7 @@ export default function Navbar() {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/50">
+                <div className="absolute right-0 top-full z-50 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/50">
                   <div className="border-b border-surface-800 px-4 py-3">
                     <p className="truncate text-sm font-semibold text-surface-100">{user.name}</p>
                     <p className="truncate text-xs text-surface-400">@{user.username}</p>
@@ -198,6 +209,15 @@ export default function Navbar() {
                         <Sparkles size={15} /> Asisten AI
                       </Link>
                     </>
+                  )}
+                  {(user.role === 'reader' || user.role === 'admin') && (
+                    <Link
+                      to="/become-creator"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-brand-300 transition-colors hover:bg-surface-800 hover:text-brand-200"
+                    >
+                      <Palette size={15} /> Jadi Creator
+                    </Link>
                   )}
                   {user.role === 'admin' && (
                     <>
@@ -261,15 +281,6 @@ export default function Navbar() {
               </Link>
             </div>
           )}
-
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-surface-800 text-surface-300 transition-colors hover:text-surface-50 md:hidden"
-            aria-label="Menu"
-          >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
         </div>
       </div>
 
@@ -335,6 +346,15 @@ export default function Navbar() {
                       <Sparkles size={16} /> Asisten AI
                     </NavLink>
                   </>
+                )}
+                {(user.role === 'reader' || user.role === 'admin') && (
+                  <NavLink
+                    to="/become-creator"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-brand-300 transition-colors hover:bg-surface-800/60 hover:text-brand-200"
+                  >
+                    <Palette size={16} /> Jadi Creator
+                  </NavLink>
                 )}
                 {user.role === 'admin' && (
                   <NavLink

@@ -85,19 +85,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Icon(Icons.tune, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
                     for (final (value, label) in _sorts)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(label, style: const TextStyle(fontSize: 12)),
-                          selected: _sort == value,
-                          onSelected: (_) => _setSort(value),
-                        ),
+                      ChoiceChip(
+                        label: Text(label, style: const TextStyle(fontSize: 12)),
+                        selected: _sort == value,
+                        onSelected: (_) => _setSort(value),
                       ),
                   ],
                 ),

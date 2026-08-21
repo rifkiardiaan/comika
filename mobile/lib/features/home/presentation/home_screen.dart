@@ -402,22 +402,27 @@ class _NotificationBellState extends State<_NotificationBell> {
         ),
         if (_unread > 0)
           Positioned(
-            right: 4,
-            top: 4,
+            right: 0,
+            top: 0,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               alignment: Alignment.center,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.red,
-                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: AppTheme.background,
+                  width: 2,
+                ),
               ),
               child: Text(
                 _unread > 99 ? '99+' : '$_unread',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
                 ),
               ),
             ),

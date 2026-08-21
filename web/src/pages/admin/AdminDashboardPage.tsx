@@ -6,10 +6,11 @@ import {
   Eye,
   Flag,
   Heart,
-  Inbox,
   Loader2,
+  Mail,
   MessageSquare,
   TrendingUp,
+  UserPlus,
   Users,
 } from 'lucide-react'
 import Avatar from '../../components/Avatar'
@@ -17,7 +18,9 @@ import PageHeader from '../../components/admin/PageHeader'
 import { RoleBadge, StatusBadge } from '../../components/admin/Badge'
 import EmptyState from '../../components/admin/EmptyState'
 import { admin, getApiErrorMessage } from '../../services/admin'
+import { listApplications } from '../../services/creatorApplication'
 import type { DashboardStats } from '../../types'
+import type { CreatorApplication } from '../../services/creatorApplication'
 import { coverEmoji, coverKeyOf, coverStyle } from '../../data/mock'
 import { formatDate, formatNumber } from '../../utils/format'
 
@@ -56,6 +59,7 @@ const recentListCard = 'overflow-hidden rounded-2xl border border-surface-800 bg
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState('')
+  const [creatorApps, setCreatorApps] = useState<CreatorApplication[]>([])
 
   useEffect(() => {
     let alive = true
@@ -66,6 +70,14 @@ export default function AdminDashboardPage() {
     return () => {
       alive = false
     }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    listApplications({ status: 'pending', per_page: 10 })
+      .then((res) => alive && setCreatorApps(res.data))
+      .catch(() => {})
+    return () => { alive = false }
   }, [])
 
   if (error) {
@@ -94,6 +106,7 @@ export default function AdminDashboardPage() {
   }
 
   const { users, comics, episodes, comments, reports, engagement } = stats
+  const pendingCreatorApps = creatorApps // already filtered by API to 'pending'
 
   return (
     <div className="animate-fade-in">
@@ -101,6 +114,30 @@ export default function AdminDashboardPage() {
         title="Dashboard"
         subtitle="Ringkasan kondisi platform COMIKA saat ini"
       />
+
+      {/* Pending creator applications alert */}
+      {pendingCreatorApps.length > 0 && (
+        <Link
+          to="/admin/creator-applications"
+          className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-5 py-4 transition-colors hover:border-amber-500/50 hover:bg-amber-500/10"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
+            <UserPlus size={20} className="text-amber-300" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-amber-300">
+              {pendingCreatorApps.length} Pengajuan Creator Menunggu Persetujuan
+            </p>
+            <p className="mt-0.5 text-xs text-surface-400">
+              {pendingCreatorApps.map((a) => a.user_name).slice(0, 3).join(', ')}
+              {pendingCreatorApps.length > 3 && ` +${pendingCreatorApps.length - 3} lainnya`}
+            </p>
+          </div>
+          <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-300">
+            Tinjau →
+          </span>
+        </Link>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -149,6 +186,40 @@ export default function AdminDashboardPage() {
 
       {/* Recent lists */}
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
+        {/* Pending creator applications */}
+        <section className={recentListCard}>
+          <div className="flex items-center justify-between border-b border-surface-800 px-5 py-4">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-surface-200">
+              <UserPlus size={15} className="text-amber-400" /> Pengajuan Creator
+            </h2>
+            <Link to="/admin/creator-applications" className="text-xs font-medium text-brand-300 hover:text-brand-200">
+              Lihat semua
+            </Link>
+          </div>
+          {pendingCreatorApps.length === 0 ? (
+            <div className="p-5"><EmptyState message="Tidak ada pengajuan baru." /></div>
+          ) : (
+            <ul className="divide-y divide-surface-800/60">
+              {pendingCreatorApps.slice(0, 5).map((app) => (
+                <li key={app.id} className="flex items-center gap-3 px-5 py-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
+                    <UserPlus size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-surface-100">{app.user?.name ?? '—'}</p>
+                    <p className="flex items-center gap-1 truncate text-xs text-surface-500">
+                      <Mail size={10} /> {app.user?.email ?? '—'} · @{app.user?.username ?? '—'}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                    Baru
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         {/* Recent users */}
         <section className={recentListCard}>
           <div className="flex items-center justify-between border-b border-surface-800 px-5 py-4">
@@ -211,40 +282,7 @@ export default function AdminDashboardPage() {
             </ul>
           )}
         </section>
-
-        {/* Recent reports */}
-        <section className={recentListCard}>
-          <div className="flex items-center justify-between border-b border-surface-800 px-5 py-4">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-surface-200">
-              <Flag size={15} className="text-amber-400" /> Laporan Terbaru
-            </h2>
-            <Link to="/admin/reports" className="text-xs font-medium text-brand-300 hover:text-brand-200">
-              Lihat semua
-            </Link>
-          </div>
-          {stats.recent_reports.length === 0 ? (
-            <div className="p-5"><EmptyState message="Tidak ada laporan." /></div>
-          ) : (
-            <ul className="divide-y divide-surface-800/60">
-              {stats.recent_reports.map((r) => (
-                <li key={r.id} className="flex items-center gap-3 px-5 py-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
-                    <Inbox size={16} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-surface-100 capitalize">{r.reason}</p>
-                    <p className="truncate text-xs text-surface-500">
-                      {r.reporter_name ?? 'Anonim'} · {formatDate(r.created_at)}
-                    </p>
-                  </div>
-                  <StatusBadge status={r.status} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
     </div>
   )
 }
-

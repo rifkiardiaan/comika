@@ -20,6 +20,7 @@ import {
   User as UserIcon,
 } from 'lucide-react'
 import Avatar from '../components/Avatar'
+import ConfirmModal from '../components/ConfirmModal'
 import PageHeader from '../components/admin/PageHeader'
 import { auth } from '../services/auth'
 import { creator } from '../services/creator'
@@ -56,6 +57,7 @@ export default function ProfilePage() {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState('')
   const [deletingAvatar, setDeletingAvatar] = useState(false)
+  const [showDeleteAvatarConfirm, setShowDeleteAvatarConfirm] = useState(false)
 
   // Web push notification (browser)
   const [pushState, setPushState] = useState<'checking' | 'unsupported' | 'on' | 'off'>('checking')
@@ -184,8 +186,11 @@ export default function ProfilePage() {
   const handleDeleteAvatar = async () => {
     const hasAvatar = user.avatar_url && user.avatar_url.length > 0
     if (!hasAvatar) return
-    const confirmed = window.confirm('Foto profil akan dihapus dan diganti dengan inisial nama.')
-    if (!confirmed) return
+    setShowDeleteAvatarConfirm(true)
+  }
+
+  const confirmDeleteAvatar = async () => {
+    setShowDeleteAvatarConfirm(false)
     setDeletingAvatar(true)
     try {
       const updated = await auth.deleteAvatar()
@@ -581,6 +586,17 @@ export default function ProfilePage() {
           hubungi tim COMIKA jika kamu ingin menjadi creator.
         </p>
       </section>
+
+      {/* Confirm delete avatar modal */}
+      <ConfirmModal
+        open={showDeleteAvatarConfirm}
+        title="Hapus Foto Profil?"
+        message="Foto profil akan dihapus dan diganti dengan inisial nama. Tindakan ini tidak dapat dibatalkan."
+        confirmText="Ya, Hapus"
+        variant="danger"
+        onConfirm={confirmDeleteAvatar}
+        onCancel={() => setShowDeleteAvatarConfirm(false)}
+      />
     </div>
   )
 }

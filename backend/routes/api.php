@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\BookmarkController;
 use App\Http\Controllers\Api\CoinPackageController;
 use App\Http\Controllers\Api\ComicController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\CreatorApplicationController;
 use App\Http\Controllers\Api\CreatorComicController;
 use App\Http\Controllers\Api\CreatorDashboardController;
 use App\Http\Controllers\Api\CreatorEarningController;
@@ -176,6 +177,14 @@ Route::middleware(['auth:sanctum', 'creator'])->group(function () {
 });
 
 // ============================================================
+// Creator Application — butuh login
+// ============================================================
+Route::middleware('auth:sanctum')->prefix('creator-application')->group(function () {
+    Route::post('/', [CreatorApplicationController::class, 'store']);
+    Route::get('/', [CreatorApplicationController::class, 'show']);
+});
+
+// ============================================================
 // Reader (Phase 05) — butuh login
 // ============================================================
 Route::middleware('auth:sanctum')->prefix('reader')->group(function () {
@@ -288,4 +297,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('transactions', [AdminTransactionController::class, 'index']);
     Route::get('withdrawals', [AdminTransactionController::class, 'withdrawals']);
     Route::patch('withdrawals/{withdrawal}/status', [AdminTransactionController::class, 'handleWithdrawal']);
+
+    // Pengajuan creator
+    Route::get('creator-applications', [CreatorApplicationController::class, 'index']);
+    Route::patch('creator-applications/{application}/approve', [CreatorApplicationController::class, 'approve']);
+    Route::patch('creator-applications/{application}/reject', [CreatorApplicationController::class, 'reject']);
 });

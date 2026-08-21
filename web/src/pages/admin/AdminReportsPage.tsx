@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, FileText, Flag, Loader2, ShieldCheck, X } from 'lucide-react'
+import { AlertCircle, CheckCircle, FileText, Flag, Loader2, Mail, ShieldCheck, User, X, XCircle } from 'lucide-react'
 import PageHeader from '../../components/admin/PageHeader'
 import Avatar from '../../components/Avatar'
 import { Badge, StatusBadge } from '../../components/admin/Badge'
 import Pagination from '../../components/admin/Pagination'
 import EmptyState from '../../components/admin/EmptyState'
 import { admin, getApiErrorMessage } from '../../services/admin'
+import { listApplications, approveApplication, rejectApplication } from '../../services/creatorApplication'
+import type { CreatorApplication } from '../../services/creatorApplication'
 import type { AdminReport, ReportStatus } from '../../types'
 import { formatDate } from '../../utils/format'
 
@@ -26,6 +28,9 @@ export default function AdminReportsPage() {
   const [active, setActive] = useState<AdminReport | null>(null)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [creatorApps, setCreatorApps] = useState<CreatorApplication[]>([])
+  const [activeApp, setActiveApp] = useState<CreatorApplication | null>(null)
+  const [processingId, setProcessingId] = useState<number | null>(null)
 
   const fetchReports = useCallback(async () => {
     setLoading(true)
@@ -41,9 +46,22 @@ export default function AdminReportsPage() {
     }
   }, [status, page])
 
+  const fetchCreatorApps = useCallback(async () => {
+    try {
+      const res = await listApplications({ status: 'pending', per_page: 10 })
+      setCreatorApps(res.data)
+    } catch {
+      // silently fail — ini page laporan, bukan page utama creator apps
+    }
+  }, [])
+
   useEffect(() => {
     fetchReports()
   }, [fetchReports])
+
+  useEffect(() => {
+    fetchCreatorApps()
+  }, [fetchCreatorApps])
 
   const openReport = (report: AdminReport) => {
     setActive(report)
@@ -68,12 +86,115 @@ export default function AdminReportsPage() {
     }
   }
 
+  const handleApproveApp = async (id: number) => {
+    setProcessingId(id)
+    try {
+      await approveApplication(id)
+      fetchCreatorApps()
+    } catch {
+      setError('Gagal menyetujui pengajuan.')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleRejectApp = async (id: number) => {
+    setProcessingId(id)
+    try {
+      await rejectApplication(id)
+      fetchCreatorApps()
+    } catch {
+      setError('Gagal menolak pengajuan.')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <PageHeader
         title="Laporan Masuk"
         subtitle="Tinjau laporan pengguna dan ambil tindakan moderasi"
       />
+
+      {/* Pengajuan Creator */}
+      {creatorApps.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-amber-300">
+              <User size={16} /> Pengajuan Creator ({creatorApps.length} menunggu)
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {creatorApps.map((app) => (
+              <div key={app.id} className="flex items-center gap-3 rounded-xl border border-surface-800 bg-surface-900 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500/15">
+                  <User size={18} className="text-brand-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-surface-100">{app.user?.name ?? '—'}</p>
+                  <p className="flex items-center gap-1 text-xs text-surface-500">
+                    <Mail size={11} /> {app.user?.email ?? '—'} · @{app.user?.username ?? '—'}
+                  </p>
+                  <p className="mt-1 line-clamp-1 text-xs text-surface-400">{app.bio}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => setActiveApp(app)}
+                    className="rounded-lg bg-surface-800 px-3 py-1.5 text-xs font-semibold text-surface-200 transition-colors hover:bg-surface-700"
+                  >Detail</button>
+                  <button
+                    onClick={() => handleApproveApp(app.id)}
+                    disabled={processingId === app.id}
+                    className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-green-500 disabled:opacity-60"
+                  >Setujui</button>
+                  <button
+                    onClick={() => handleRejectApp(app.id)}
+                    disabled={processingId === app.id}
+                    className="rounded-lg bg-red-600/80 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-500 disabled:opacity-60"
+                  >Tolak</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail Pengajuan Creator */}
+      {activeApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setActiveApp(null)} />
+          <div className="relative max-h-[90vh] w-full max-w-lg animate-slide-up overflow-y-auto rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-2xl shadow-black/60">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-bold">
+                  <User size={18} className="text-brand-400" /> Pengajuan Creator
+                </h3>
+                <p className="mt-1 text-xs text-surface-500">{activeApp.user?.name} · @{activeApp.user?.username}</p>
+              </div>
+              <button onClick={() => setActiveApp(null)} className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-800"><X size={18} /></button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div><p className="text-xs font-semibold uppercase text-surface-500">Bio</p><p className="mt-1 text-sm text-surface-200">{activeApp.bio}</p></div>
+              <div><p className="text-xs font-semibold uppercase text-surface-500">Motivasi</p><p className="mt-1 text-sm text-surface-200">{activeApp.reason}</p></div>
+              {activeApp.experience && <div><p className="text-xs font-semibold uppercase text-surface-500">Pengalaman</p><p className="mt-1 text-sm text-surface-200">{activeApp.experience}</p></div>}
+              {activeApp.portfolio_url && <div><p className="text-xs font-semibold uppercase text-surface-500">Portfolio</p><a href={activeApp.portfolio_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-brand-400 hover:text-brand-300"><FileText size={13} /> {activeApp.portfolio_url}</a></div>}
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => { handleApproveApp(activeApp.id); setActiveApp(null) }}
+                disabled={processingId === activeApp.id}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white hover:bg-green-500 disabled:opacity-60"
+              ><CheckCircle size={16} /> Setujui</button>
+              <button
+                onClick={() => { handleRejectApp(activeApp.id); setActiveApp(null) }}
+                disabled={processingId === activeApp.id}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-60"
+              ><XCircle size={16} /> Tolak</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter */}
       <div className="mb-4 flex flex-wrap items-center gap-3">

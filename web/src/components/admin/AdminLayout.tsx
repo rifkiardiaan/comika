@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   Palette,
   Shield,
   Tags,
+  UserPlus,
   Users,
   X,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ import { auth } from '../../services/auth'
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: 'Pengguna', icon: Users },
+  { to: '/admin/creator-applications', label: 'Pengajuan Creator', icon: UserPlus },
   { to: '/admin/creators', label: 'Creator', icon: Palette },
   { to: '/admin/comics', label: 'Komik', icon: BookOpen },
   { to: '/admin/comments', label: 'Komentar', icon: MessageSquare },
@@ -28,7 +30,7 @@ const navItems = [
   { to: '/admin/transactions', label: 'Transaksi', icon: Landmark },
 ]
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({ onNavigate, pendingCount }: { onNavigate?: () => void; pendingCount?: number }) {
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -51,24 +53,32 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       {/* Nav */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-gradient-to-r from-brand-600 to-pink-600 text-white shadow-lg shadow-brand-600/25'
-                  : 'text-surface-300 hover:bg-surface-800/60 hover:text-surface-50'
-              }`
-            }
-          >
-            <Icon size={17} />
-            {label}
-          </NavLink>
-        ))}
+        {navItems.map(({ to, label, icon: Icon, end }) => {
+          const isCreatorApp = to === '/admin/creator-applications'
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-gradient-to-r from-brand-600 to-pink-600 text-white shadow-lg shadow-brand-600/25'
+                    : 'text-surface-300 hover:bg-surface-800/60 hover:text-surface-50'
+                }`
+              }
+            >
+              <Icon size={17} />
+              {label}
+              {isCreatorApp && (pendingCount ?? 0) > 0 && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                  {pendingCount}
+                </span>
+              )}
+            </NavLink>
+          )
+        })}
       </nav>
 
       {/* Footer */}
@@ -90,14 +100,29 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+import { listApplications } from '../../services/creatorApplication'
+
 export default function AdminLayout() {
   const [open, setOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    const refresh = () => {
+      listApplications({ status: 'pending', per_page: 1 })
+        .then((res) => setPendingCount(res.meta.total))
+        .catch(() => {})
+    }
+    refresh()
+    // Poll setiap 10 detik untuk cek perubahan dari tab lain
+    const id = setInterval(refresh, 10_000)
+    return () => clearInterval(id)
+  }, [])
 
   return (
     <div className="flex min-h-screen bg-surface-950 text-surface-100">
       {/* Sidebar desktop */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-surface-800/70 bg-surface-900/60 backdrop-blur lg:block">
-        <SidebarContent />
+        <SidebarContent pendingCount={pendingCount} />
       </aside>
 
       {/* Sidebar mobile drawer */}
@@ -112,7 +137,7 @@ export default function AdminLayout() {
             >
               <X size={18} />
             </button>
-            <SidebarContent onNavigate={() => setOpen(false)} />
+            <SidebarContent onNavigate={() => setOpen(false)} pendingCount={pendingCount} />
           </aside>
         </div>
       )}

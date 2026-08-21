@@ -2,12 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertCircle,
-  BadgeCheck,
   CheckCircle2,
   Coins,
   Loader2,
   Lock,
-  Plus,
   RefreshCw,
   Wallet,
   XCircle,
@@ -46,8 +44,7 @@ export default function WalletPage() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [buyingId, setBuyingId] = useState<number | null>(null)
+  const [notice] = useState('')
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -96,22 +93,6 @@ export default function WalletPage() {
         </Link>
       </div>
     )
-  }
-
-  const buy = async (pkg: CoinPackage) => {
-    setBuyingId(pkg.id)
-    setNotice('')
-    setError('')
-    try {
-      const result = await monetization.purchase(pkg.id)
-      auth.setSession(auth.getToken() ?? '', { ...user, coin_balance: result.balance })
-      setNotice(`Berhasil! ${pkg.coins.toLocaleString('id-ID')} koin ditambahkan ke dompet Anda.`)
-      await fetchAll()
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Gagal membeli paket koin.'))
-    } finally {
-      setBuyingId(null)
-    }
   }
 
   return (
@@ -178,7 +159,7 @@ export default function WalletPage() {
       <section className="mt-10">
         <h2 className="font-display text-xl font-bold text-surface-50">Top-Up Koin</h2>
         <p className="mt-1 text-sm text-surface-400">
-          MVP: pembayaran disimulasikan sukses instan — payment gateway menyusul.
+          Pembelian koin memerlukan pembayaran melalui payment gateway yang tersedia.
         </p>
 
         {loading && !packages.length ? (
@@ -210,16 +191,10 @@ export default function WalletPage() {
                 <p className="mt-1 text-sm text-surface-400">{pkg.name}</p>
                 <p className="mt-4 text-lg font-semibold text-surface-200">{formatRupiah(pkg.price)}</p>
                 <button
-                  onClick={() => buy(pkg)}
-                  disabled={buyingId === pkg.id}
-                  className={`mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${
-                    i === 1
-                      ? 'bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-600/25'
-                      : 'bg-gradient-to-r from-brand-600 to-pink-600 shadow-brand-600/25'
-                  }`}
+                  disabled
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-surface-500 bg-surface-800 cursor-not-allowed"
                 >
-                  {buyingId === pkg.id ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-                  {buyingId === pkg.id ? 'Memproses…' : 'Beli'}
+                  <Lock size={15} /> Segera Hadir
                 </button>
               </div>
             ))}
@@ -297,13 +272,16 @@ export default function WalletPage() {
       </section>
 
       {/* Info kecil */}
-      <section className="mt-10 flex items-start gap-3 rounded-2xl border border-surface-800 bg-surface-900/50 p-5 text-sm text-surface-400">
-        <BadgeCheck size={18} className="mt-0.5 shrink-0 text-brand-300" />
-        <p>
-          Koin adalah mata uang internal COMIKA. Episode premium bisa dibuka dengan koin; creator menerima
-          60% dari nilai unlock. Untuk saat ini top-up disimulasikan — sistem pembayaran sungguhan akan
-          diintegrasikan pada rilis berikutnya.
-        </p>
+      <section className="mt-10 flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 text-sm text-surface-400">
+        <Lock size={18} className="mt-0.5 shrink-0 text-amber-400" />
+        <div>
+          <p className="font-semibold text-amber-300">Pembayaran Belum Tersedia</p>
+          <p className="mt-1">
+            Sistem pembayaran real-time sedang dalam pengembangan. Untuk saat ini,
+            top-up koin belum dapat dilakukan. Episode premium dapat diakses setelah
+            sistem pembayaran terintegrasi.
+          </p>
+        </div>
       </section>
     </div>
   )

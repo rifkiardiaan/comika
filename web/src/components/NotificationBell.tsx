@@ -2,28 +2,46 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bell, BellRing, CheckCheck } from 'lucide-react'
 import { notifications as notificationsApi } from '../services/notifications'
+import * as localNotif from '../services/localNotifications'
 import { notificationDescription, notificationTarget, notificationTitle } from '../utils/notifications'
 import { timeAgo } from '../utils/format'
 import type { AppNotification } from '../types'
 import NotificationIcon from './NotificationIcon'
 
+/** Tipe unified: bisa API notification atau local notification. */
+type UnifiedNotification =
+  | (AppNotification & { source: 'api' })
+  | (localNotif.LocalNotification & { source: 'local' })
+
 /** Lonceng notifikasi di Navbar: badge jumlah belum dibaca + dropdown. */
 export default function NotificationBell() {
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
-  const [items, setItems] = useState<AppNotification[]>([])
+  const [items, setItems] = useState<UnifiedNotification[]>([])
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
-  const refreshCount = () => {
-    notificationsApi.unreadCount().then(setUnread).catch(() => {})
+  const refreshCount = async () => {
+    let apiCount = 0
+    try {
+      apiCount = await notificationsApi.unreadCount()
+    } catch {
+      // abaikan
+    }
+    const localCount = localNotif.unreadCount()
+    setUnread(apiCount + localCount)
   }
 
   useEffect(() => {
     refreshCount()
     const id = setInterval(refreshCount, 60_000)
-    return () => clearInterval(id)
+    // Dengarkan event dari local notifications
+    window.addEventListener('comika:notification', refreshCount)
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('comika:notification', refreshCount)
+    }
   }, [])
 
   useEffect(() => {
@@ -39,38 +57,74 @@ export default function NotificationBell() {
     setOpen(next)
     if (next) {
       setLoading(true)
+
+      // Ambil notifikasi dari API
+      let apiItems: AppNotification[] = []
       try {
         const res = await notificationsApi.list(1)
-        setItems(res.data)
+        apiItems = res.data
       } catch {
-        setItems([])
+        apiItems = []
       }
+
+      // Ambil notifikasi lokal
+      const localItems = localNotif.getNotifications()
+
+      // Gabungkan & sort by created_at DESC
+      const merged: UnifiedNotification[] = [
+        ...apiItems.map((n) => ({ ...n, source: 'api' as const })),
+        ...localItems.map((n) => ({ ...n, source: 'local' as const })),
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      setItems(merged)
       setLoading(false)
       refreshCount()
     }
   }
 
-  const handleClickItem = (n: AppNotification) => {
-    if (!n.read_at) {
-      notificationsApi.markRead(n.id).then(refreshCount).catch(() => {})
-      setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, read_at: new Date().toISOString() } : i)))
+  const handleClickItem = (n: UnifiedNotification) => {
+    if (n.source === 'local') {
+      if (!n.read) {
+        localNotif.markRead(n.id)
+        setItems((prev) => prev.map((i) => (i.id === n.id && i.source === 'local' ? { ...i, read: true } : i)))
+        refreshCount()
+      }
+    } else {
+      if (!(n as AppNotification).read_at) {
+        notificationsApi.markRead(n.id).then(refreshCount).catch(() => {})
+        setItems((prev) => prev.map((i) => (i.id === n.id && i.source === 'api' ? { ...i, read_at: new Date().toISOString() } : i)))
+      }
     }
     setOpen(false)
     navigate(notificationTarget(n))
   }
 
   const handleMarkAll = async () => {
+    // Tandai semua API notif
     try {
       await notificationsApi.markAllRead()
-      setItems((prev) => prev.map((i) => ({ ...i, read_at: i.read_at ?? new Date().toISOString() })))
-      refreshCount()
     } catch {
-      // abaikan — badge akan tetap tampil
+      // abaikan
     }
+    // Tandai semua local notif
+    localNotif.markAllRead()
+
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.source === 'api') return { ...i, read_at: i.read_at ?? new Date().toISOString() }
+        return { ...i, read: true }
+      }),
+    )
+    refreshCount()
+  }
+
+  const isUnread = (n: UnifiedNotification) => {
+    if (n.source === 'local') return !n.read
+    return !(n as AppNotification).read_at
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative overflow-visible" ref={ref}>
       <button
         onClick={toggle}
         aria-label="Notifikasi"
@@ -78,14 +132,14 @@ export default function NotificationBell() {
       >
         {unread > 0 ? <BellRing size={16} /> : <Bell size={16} />}
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow">
+          <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-[5px] text-[10px] font-bold leading-none text-white shadow-md ring-2 ring-surface-950">
             {unread > 99 ? '99+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/50">
+        <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/50">
           <div className="flex items-center justify-between border-b border-surface-800 px-4 py-3">
             <p className="text-sm font-semibold text-surface-100">Notifikasi</p>
             {unread > 0 && (
@@ -119,12 +173,12 @@ export default function NotificationBell() {
                     <span className="flex items-start justify-between gap-2">
                       <span
                         className={`truncate text-sm font-semibold ${
-                          n.read_at ? 'text-surface-300' : 'text-surface-50'
+                          isUnread(n) ? 'text-surface-50' : 'text-surface-300'
                         }`}
                       >
                         {notificationTitle(n)}
                       </span>
-                      {!n.read_at && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />}
+                      {isUnread(n) && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />}
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-surface-400">
                       {notificationDescription(n)}

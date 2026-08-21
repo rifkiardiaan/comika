@@ -18,19 +18,18 @@ export default function Footer() {
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-surface-200">Jelajahi</h4>
             <ul className="mt-3 space-y-2 text-sm text-surface-400">
-              <li><Link to="/discover" className="transition-colors hover:text-brand-300">Jelajahi Komik</Link></li>
+              <li><Link to="/register" className="transition-colors hover:text-brand-300">Buat Akun</Link></li>
+              <li><Link to="/" className="transition-colors hover:text-brand-300">Beranda</Link></li>
               <li><Link to="/library" className="transition-colors hover:text-brand-300">Perpustakaan</Link></li>
-              <li><Link to="/creator" className="transition-colors hover:text-brand-300">Jadi Creator</Link></li>
+              <li><Link to="/become-creator" className="transition-colors hover:text-brand-300">Jadi Creator</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-surface-200">Komunitas</h4>
             <ul className="mt-3 space-y-2 text-sm text-surface-400">
+              <li><Link to="/bantuan" className="transition-colors hover:text-brand-300">Bantuan</Link></li>
+              <li><Link to="/komunitas" className="transition-colors hover:text-brand-300">Komunitas</Link></li>
               <li><Link to="/login" className="transition-colors hover:text-brand-300">Masuk</Link></li>
-              <li><Link to="/register" className="transition-colors hover:text-brand-300">Buat Akun</Link></li>
-              <li><a href="#" className="transition-colors hover:text-brand-300">Bantuan</a></li>
             </ul>
           </div>
         </div>
