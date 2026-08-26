@@ -11,7 +11,7 @@ const socialLinks = [
   {
     name: 'Instagram',
     description: 'Follow untuk update terbaru dan behind the scenes',
-    url: 'https://www.instagram.com/4rdiaan___/',
+    url: 'https://www.instagram.com/smkn.11malang/',
     icon: Camera,
     color: 'from-pink-500 to-orange-500',
   },
@@ -25,7 +25,7 @@ const socialLinks = [
   {
     name: 'YouTube',
     description: 'Nonton video behind the scenes dan tips',
-    url: 'https://youtube.com/@comika',
+    url: 'https://youtube.com/@smkn.11malang?si=_CZgFsLuDOvdVN91',
     icon: Play,
     color: 'from-red-500 to-red-600',
   },

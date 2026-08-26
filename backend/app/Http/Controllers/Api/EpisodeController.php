@@ -10,6 +10,7 @@ use App\Http\Resources\EpisodeResource;
 use App\Models\Comic;
 use App\Models\Episode;
 use App\Models\EpisodeUnlock;
+use App\Models\Subscription;
 use App\Services\EpisodeService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
@@ -41,6 +42,8 @@ class EpisodeController extends Controller
 
         // Info unlock per episode (Phase 09): is_locked untuk episode
         // premium yang belum di-unlock — berlaku juga untuk pengunjung anonim.
+        $isVvip = $user !== null && Subscription::isUserVvip($user);
+
         if ($user) {
             $unlockedIds = EpisodeUnlock::where('user_id', $user->id)
                 ->whereIn('episode_id', $episodes->pluck('id'))
@@ -49,7 +52,7 @@ class EpisodeController extends Controller
             foreach ($episodes as $episode) {
                 $episode->setAttribute(
                     'is_unlocked',
-                    $isOwner || ! $episode->is_premium || $unlockedIds->contains($episode->id)
+                    $isOwner || ! $episode->is_premium || $isVvip || $unlockedIds->contains($episode->id)
                 );
 
                 if ($episode->is_premium && ! $episode->is_unlocked) {
@@ -90,9 +93,11 @@ class EpisodeController extends Controller
         }
 
         // Gate premium (Phase 09): halaman episode premium hanya untuk
-        // pemilik komik atau user yang sudah unlock.
+        // pemilik komik, user VVIP, atau user yang sudah unlock.
+        $isVvip = $user !== null && Subscription::isUserVvip($user);
         $isUnlocked = $isOwner
             || ! $episode->is_premium
+            || $isVvip
             || ($user !== null && EpisodeUnlock::where('user_id', $user->id)
                 ->where('episode_id', $episode->id)
                 ->exists());

@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<body style="font-family:monospace;font-size:12px;background:#111;color:#0f0;padding:8px;">
+<div id="out">mengukur…</div>
+<script>
+  const out = document.getElementById('out')
+  const results = []
+  const viewports = [375, 320]
+
+  const pages = [
+    { url: '/library', user: 'reader' },
+    { url: '/history', user: 'reader' },
+    { url: '/gamification', user: 'reader' },
+    { url: '/notifications', user: 'reader' },
+    { url: '/wallet', user: 'reader' },
+    { url: '/profile', user: 'reader' },
+    { url: '/creator', user: 'creator' },
+    { url: '/creator/comics', user: 'creator' },
+    { url: '/creator/earnings', user: 'creator' },
+    { url: '/creator/ai', user: 'creator' },
+    { url: '/admin', user: 'admin' },
+    { url: '/admin/users', user: 'admin' },
+    { url: '/admin/comics', user: 'admin' },
+    { url: '/admin/comments', user: 'admin' },
+    { url: '/admin/transactions', user: 'admin' },
+  ]
+
+  const creds = {
+    reader: { email: 'budi@comika.test', password: 'password' },
+    creator: { email: 'cassidy98@example.org', password: 'password' },
+    admin: { email: 'admin@comika.test', password: 'password' },
+  }
+
+  let v = 0
+  let i = 0
+  let session = {}
+
+  async function login(user) {
+    if (session[user]) return session[user]
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(creds[user]),
+    }).then((r) => r.json())
+    session[user] = res.data
+    return session[user]
+  }
+
+  function run() {
+    if (v >= viewports.length) {
+      out.textContent = 'RESULTS\n' + results.join('\n')
+      document.title = 'PROBE-DONE'
+      return
+    }
+    if (i >= pages.length) {
+      v++
+      i = 0
+      setTimeout(run, 150)
+      return
+    }
+    const page = pages[i]
+    const width = viewports[v]
+    const iframe = document.createElement('iframe')
+    iframe.style.width = width + 'px'
+    iframe.style.height = '700px'
+    iframe.style.display = 'block'
+    iframe.style.border = '1px solid #333'
+    document.body.appendChild(iframe)
+    iframe.src = '/login'
+    let done = false
+    const finish = () => {
+      if (done) return
+      done = true
+      try {
+        const doc = iframe.contentDocument
+        const sw = doc.documentElement.scrollWidth
+        const cw = doc.documentElement.clientWidth
+        results.push(`[${width}px] ${page.url} (${page.user}): client=${cw} scroll=${sw} ${sw > cw + 1 ? 'OVERFLOW!' : 'OK'}`)
+      } catch (e) {
+        results.push(`[${width}px] ${page.url}: ERROR ${e.message}`)
+      }
+      iframe.remove()
+      i++
+      setTimeout(run, 200)
+    }
+    iframe.onload = async () => {
+      try {
+        const s = await login(page.user)
+        const w = iframe.contentWindow
+        w.localStorage.setItem('comika_token', s.token)
+        w.localStorage.setItem('comika_user', JSON.stringify(s.user))
+        w.location.href = page.url
+      } catch (e) {
+        results.push(`[${width}px] ${page.url}: LOGIN ERROR ${e.message}`)
+        iframe.remove()
+        i++
+        setTimeout(run, 200)
+      }
+    }
+    setTimeout(finish, 12000)
+  }
+  run()
+</script>
+</body>
+</html>

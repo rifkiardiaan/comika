@@ -62,5 +62,8 @@ class DatabaseSeeder extends Seeder
 
         // Konten demo (komik + episode + halaman) untuk pengalaman membaca
         $this->call(ComicDemoSeeder::class);
+
+        // Gambar demo untuk halaman episode
+        $this->call(DemoPageSeeder::class);
     }
 }

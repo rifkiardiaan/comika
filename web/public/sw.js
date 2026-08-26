@@ -1,19 +1,57 @@
-/* Service worker COMIKA — menangani web push notification & klik notifikasi. */
+/* Service worker COMIKA — PWA offline caching + web push notification. */
 
-self.addEventListener('install', () => {
-  // Langsung aktif — jangan menunggu tab lama ditutup
-  self.skipWaiting()
+const CACHE_NAME = 'comika-v1'
+const SHELL_ASSETS = [
+  '/',
+  '/index.html',
+  '/favicon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.json',
+]
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)).then(() => self.skipWaiting()),
+  )
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Ambil alih semua tab agar push diterima meski tab dibuka sebelum SW terpasang
-      await self.clients.claim()
-      // Bersihkan cache lama (jika pernah ada)
+      // Hapus cache lama
       const keys = await caches.keys()
-      await Promise.all(keys.map((key) => caches.delete(key)))
+      await Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
+      )
+      await self.clients.claim()
     })(),
+  )
+})
+
+// Network-first strategy for API, cache-first for static assets
+self.addEventListener('fetch', (event) => {
+  const { request } = event
+  const url = new URL(request.url)
+
+  // Skip non-GET and API requests
+  if (request.method !== 'GET' || url.pathname.startsWith('/api/')) return
+
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const fetchPromise = fetch(request)
+        .then((response) => {
+          // Cache valid responses
+          if (response && response.status === 200 && response.type === 'basic') {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+          }
+          return response
+        })
+        .catch(() => cached)
+
+      return cached || fetchPromise
+    }),
   )
 })
 

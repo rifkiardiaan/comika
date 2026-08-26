@@ -12,6 +12,13 @@ class EpisodeResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Thumbnail: ambil gambar halaman pertama jika ada
+        $thumbnailUrl = null;
+        if ($this->relationLoaded('pages')) {
+            $firstPage = $this->pages->sortBy('page_number')->first();
+            $thumbnailUrl = $firstPage?->image_url;
+        }
+
         $data = [
             'id' => $this->id,
             'comic_id' => $this->comic_id,
@@ -23,6 +30,7 @@ class EpisodeResource extends JsonResource
             'view_count' => $this->view_count,
             'like_count' => $this->like_count,
             'page_count' => $this->whenCounted('pages'),
+            'thumbnail_url' => $thumbnailUrl,
             'published_at' => $this->published_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

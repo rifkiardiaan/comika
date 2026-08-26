@@ -88,4 +88,13 @@ export const monetization = {
     const { data } = await api.post<{ data: Withdrawal }>('/creator/withdrawals', payload)
     return data.data
   },
+
+  /** Transfer saldo affiliate earnings ke dompet koin. */
+  async transferToWallet(amount: number): Promise<{ coins_added: number; amount_deducted: number; balance: number }> {
+    const { data } = await api.post<{ data: { coins_added: number; amount_deducted: number; balance: number } }>(
+      '/creator/earnings/transfer-to-wallet',
+      { amount },
+    )
+    return data.data
+  },
 }

@@ -9,6 +9,7 @@ use App\Models\Comic;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 
 class AdminComicController extends Controller
 {
@@ -82,6 +83,35 @@ class AdminComicController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status komik berhasil diperbarui.',
+            'data' => new AdminComicResource(
+                $comic->load('creator:id,name')->loadCount('episodes')
+            ),
+        ]);
+    }
+
+    /**
+     * Hapus cover komik — set cover_url ke null & hapus file fisik.
+     */
+    public function deleteCover(Comic $comic): JsonResponse
+    {
+        if (! $comic->cover_url) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Komik ini tidak memiliki cover.',
+            ], 422);
+        }
+
+        // Hapus file fisik jika ada
+        $path = storage_path('app/public/'.$comic->cover_url);
+        if (File::exists($path)) {
+            File::delete($path);
+        }
+
+        $comic->update(['cover_url' => null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cover komik berhasil dihapus.',
             'data' => new AdminComicResource(
                 $comic->load('creator:id,name')->loadCount('episodes')
             ),

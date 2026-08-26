@@ -1,0 +1,50 @@
+# ======================================================================
+# COMIKA — Root .htaccess (InfinityFree shared hosting)
+# Document root: public_html/
+# Backend Laravel di subfolder: app/
+# Frontend React di root (index.html + assets/)
+# ======================================================================
+
+<IfModule mod_rewrite.c>
+    Options -MultiViews -Indexes
+    RewriteEngine On
+    RewriteBase /
+
+    # Handle Authorization Header (penting untuk Sanctum Bearer token)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # ---------------------------------------------------------------
+    # API routes → Laravel backend (app/public/index.php)
+    # Semua request /api/* diteruskan ke Laravel
+    # ---------------------------------------------------------------
+    RewriteRule ^api/(.*)$ app/public/index.php [L,QSA]
+
+    # ---------------------------------------------------------------
+    # Uploaded files → Laravel storage (cover, avatar, halaman episode)
+    # /storage/comics/covers/comic-1.svg → app/storage/app/public/comics/covers/comic-1.svg
+    # ---------------------------------------------------------------
+    RewriteCond %{DOCUMENT_ROOT}/app/storage/app/public/$1 -f
+    RewriteRule ^storage/(.*)$ app/storage/app/public/$1 [L]
+
+    # ---------------------------------------------------------------
+    # SPA fallback — semua request yang bukan file/folder asli
+    # diarahkan ke index.html (React Router)
+    # ---------------------------------------------------------------
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . /index.html [L]
+</IfModule>
+
+# ---------------------------------------------------------------
+# Protect sensitive files dari akses publik
+# ---------------------------------------------------------------
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+# Blokir akses ke folder Laravel yang sensitif
+RewriteRule ^(app/(config|database|routes|bootstrap|tests)|\.env|\.env\.example|\.git) - [F,L]
+
+# Disable directory listing
+Options -Indexes

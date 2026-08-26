@@ -10,6 +10,8 @@ import {
   Calendar,
   CheckCircle2,
   Coins,
+  Crown,
+  Gem,
   Loader2,
   Lock,
   LogIn,
@@ -21,6 +23,8 @@ import {
 } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import ConfirmModal from '../components/ConfirmModal'
+import VvipConfetti from '../components/VvipConfetti'
+import VvipCelebration from '../components/VvipCelebration'
 import PageHeader from '../components/admin/PageHeader'
 import { auth } from '../services/auth'
 import { creator } from '../services/creator'
@@ -63,6 +67,18 @@ export default function ProfilePage() {
   const [pushState, setPushState] = useState<'checking' | 'unsupported' | 'on' | 'off'>('checking')
   const [pushBusy, setPushBusy] = useState(false)
 
+  // VVIP celebration
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
+  const [hasSeenVvip, setHasSeenVvip] = useState(() => {
+    // Check if user has already seen VVIP celebration
+    try {
+      return localStorage.getItem(`vvip_seen_${user?.id}`) === 'true'
+    } catch {
+      return false
+    }
+  })
+
   const fetchProfile = useCallback(async () => {
     if (user?.role !== 'creator') return
     setLoadingProfile(true)
@@ -81,6 +97,31 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user?.role === 'creator') fetchProfile()
   }, [user, fetchProfile])
+
+  // VVIP celebration effect
+  useEffect(() => {
+    if (user?.is_vvip && !hasSeenVvip) {
+      // Show celebration after a short delay
+      const timer = setTimeout(() => {
+        setShowConfetti(true)
+        setShowCelebration(true)
+        // Mark as seen
+        try {
+          localStorage.setItem(`vvip_seen_${user.id}`, 'true')
+        } catch {
+          // ignore
+        }
+        setHasSeenVvip(true)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [user, hasSeenVvip])
+
+  const handleCelebrationClose = () => {
+    setShowCelebration(false)
+    // Keep confetti running for a bit more
+    setTimeout(() => setShowConfetti(false), 1000)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -235,6 +276,15 @@ export default function ProfilePage() {
   }
 
   return (
+    <>
+      {/* VVIP Celebration Effects */}
+      <VvipConfetti show={showConfetti} duration={5000} />
+      <VvipCelebration
+        show={showCelebration}
+        onClose={handleCelebrationClose}
+        userName={user.name}
+      />
+
     <div className="mx-auto max-w-5xl animate-fade-in px-4 py-10 sm:px-6">
       <PageHeader title="Profil Saya" subtitle="Informasi akun dan profil creator kamu" />
 
@@ -249,7 +299,97 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* ====== Kartu identitas ====== */}
+      {/* ====== Kartu identitas VVIP ====== */}
+      {user.is_vvip ? (
+        <section className="relative overflow-hidden rounded-3xl border border-purple-500/30 vvip-card-glow bg-gradient-to-br from-purple-900/40 via-surface-900 to-pink-900/30 p-8">
+          {/* Decorative elements */}
+          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-pink-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute left-1/2 top-0 h-px w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+          
+          {/* VVIP Badge Header */}
+          <div className="mb-6 flex items-center justify-center">
+            <div className="badge-vvip-gradient flex items-center gap-2 rounded-full px-5 py-2 shadow-xl">
+              <Gem size={16} className="text-white animate-pulse" />
+              <span className="text-sm font-bold text-white tracking-wider uppercase">VVIP Member</span>
+              <Gem size={16} className="text-white animate-pulse" />
+            </div>
+          </div>
+
+          <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+            {/* Avatar with glow */}
+            <div className="relative">
+              <div className="avatar-vvip-glow">
+                <Avatar name={user.name} avatarUrl={user.avatar_url} size={100} className="shadow-2xl shadow-purple-500/30" />
+              </div>
+              {user.avatar_url && (
+                <button
+                  type="button"
+                  onClick={handleDeleteAvatar}
+                  disabled={deletingAvatar}
+                  title="Hapus foto profil"
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-surface-900 bg-red-500 text-white shadow-lg transition-colors hover:bg-red-600 disabled:opacity-60"
+                >
+                  {deletingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                </button>
+              )}
+            </div>
+
+            {/* User info */}
+            <div className="flex-1 text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <h2 className="font-display text-3xl font-bold text-surface-50">{user.name}</h2>
+                <RoleChip role={user.role} />
+                {profile?.is_verified && (
+                  <span className="flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-300">
+                    <BadgeCheck size={12} /> Terverifikasi
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-purple-300/80">@{user.username}</p>
+              
+              <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-surface-400 sm:justify-start">
+                <span className="flex items-center gap-1.5">
+                  <Mail size={13} /> {user.email}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar size={13} /> Bergabung {formatDate(user.created_at)}
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-300">
+                  <Coins size={13} /> {(user.coin_balance ?? 0).toLocaleString('id-ID')} koin
+                </span>
+              </div>
+
+              {/* VVIP Expiry */}
+              {user.vvip_until && (
+                <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2">
+                  <Gem size={14} className="text-purple-400" />
+                  <span className="text-sm text-purple-200">
+                    VVIP aktif sampai <strong>{new Date(user.vvip_until).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* VVIP Benefits */}
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { icon: '🎨', label: 'Bebas Iklan', desc: 'Baca tanpa gangguan' },
+              { icon: '📚', label: 'Semua Episode', desc: 'Akses gratis semua eps' },
+              { icon: '💎', label: 'Badge Eksklusif', desc: 'Tanda VVIP kamu' },
+              { icon: '⭐', label: 'Fitur Eksklusif', desc: 'Akses fitur terbaru' },
+            ].map((benefit, i) => (
+              <div key={i} className="rounded-xl border border-purple-500/20 bg-purple-900/20 p-3 text-center transition-all hover:border-purple-500/40 hover:bg-purple-900/30">
+                <span className="text-2xl">{benefit.icon}</span>
+                <p className="mt-1 text-xs font-bold text-purple-200">{benefit.label}</p>
+                <p className="text-[10px] text-purple-300/60">{benefit.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+      /* ====== Kartu identitas Regular ====== */
       <section className="relative overflow-hidden rounded-3xl border border-surface-800 bg-gradient-to-br from-brand-900/40 via-surface-900 to-surface-900 p-8">
         <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-brand-500/15 blur-3xl" />
         <div className="relative flex flex-wrap items-center gap-4 sm:gap-6">
@@ -271,6 +411,11 @@ export default function ProfilePage() {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display text-2xl font-bold text-surface-50">{user.name}</h2>
               <RoleChip role={user.role} />
+              {user.is_premium && (
+                <span className="badge-premium inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-orange-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-300">
+                  <Crown size={12} /> Premium
+                </span>
+              )}
               {profile?.is_verified && (
                 <span className="flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-300">
                   <BadgeCheck size={12} /> Terverifikasi
@@ -288,10 +433,23 @@ export default function ProfilePage() {
               <span className="flex items-center gap-1.5 text-amber-300">
                 <Coins size={13} /> {(user.coin_balance ?? 0).toLocaleString('id-ID')} koin
               </span>
+              {user.is_premium && user.premium_until && (
+                <span className="flex items-center gap-1.5 text-amber-300">
+                  <Crown size={13} /> Premium aktif sampai {new Date(user.premium_until).toLocaleDateString('id-ID')}
+                </span>
+              )}
             </div>
+            {/* Upgrade CTA */}
+            <Link
+              to="/premium"
+              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-600/25 transition-all hover:brightness-110"
+            >
+              <Gem size={14} /> Upgrade ke VVIP
+            </Link>
           </div>
         </div>
       </section>
+      )}
 
       {/* ====== Aksi akun ====== */}
       <section className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -598,6 +756,7 @@ export default function ProfilePage() {
         onCancel={() => setShowDeleteAvatarConfirm(false)}
       />
     </div>
+    </>
   )
 }
 

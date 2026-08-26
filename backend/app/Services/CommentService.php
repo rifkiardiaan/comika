@@ -20,15 +20,18 @@ class CommentService
         $episodeId = $data['episode_id'] ?? null;
         $parentId = $data['parent_id'] ?? null;
 
-        // Balasan harus mengarah ke komentar top-level di komik yang sama
+        // Balasan harus mengarah ke komentar di komik yang sama
         if ($parentId) {
             $parent = Comment::findOrFail($parentId);
 
-            if ($parent->comic_id !== $comic->id || $parent->parent_id !== null) {
+            if ($parent->comic_id !== $comic->id) {
                 throw ValidationException::withMessages([
-                    'parent_id' => ['Balasan hanya bisa dibuat pada komentar utama di komik ini.'],
+                    'parent_id' => ['Balasan harus merujuk ke komentar di komik yang sama.'],
                 ]);
             }
+
+            // Selalu unggah ke top-level (flatten) agar mudah di-load
+            $rootParentId = $parent->parent_id ?? $parent->id;
 
             if ($parent->episode_id !== $episodeId) {
                 throw ValidationException::withMessages([
@@ -40,7 +43,7 @@ class CommentService
         return $comic->comments()->create([
             'user_id' => $user->id,
             'episode_id' => $episodeId,
-            'parent_id' => $parentId,
+            'parent_id' => $parentId ? ($rootParentId ?? $parentId) : null,
             'content' => $data['content'],
             'status' => Comment::STATUS_ACTIVE,
         ]);
@@ -76,7 +79,7 @@ class CommentService
         $query = $comic->comments()
             ->whereNull('parent_id')
             ->where('status', Comment::STATUS_ACTIVE)
-            ->with(['user', 'replies' => fn ($q) => $q->where('status', Comment::STATUS_ACTIVE)->with('user')])
+            ->with(['user', 'replies' => fn ($q) => $q->where('status', Comment::STATUS_ACTIVE)->with(['user', 'parent.user'])])
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 

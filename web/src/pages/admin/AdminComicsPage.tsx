@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, Eye, Heart, Loader2, Search, Star, Trash2 } from 'lucide-react'
+import { AlertCircle, Eye, Heart, ImageOff, Loader2, Search, Star, Trash2 } from 'lucide-react'
 import PageHeader from '../../components/admin/PageHeader'
 import { StatusBadge } from '../../components/admin/Badge'
 import Pagination from '../../components/admin/Pagination'
@@ -29,6 +29,7 @@ export default function AdminComicsPage() {
   const [busyId, setBusyId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminComic | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [coverBusyId, setCoverBusyId] = useState<number | null>(null)
 
   const fetchComics = useCallback(async () => {
     setLoading(true)
@@ -81,6 +82,20 @@ export default function AdminComicsPage() {
       setDeleteTarget(null)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const deleteCover = async (comic: AdminComic) => {
+    setCoverBusyId(comic.id)
+    setNotice('')
+    try {
+      const updated = await admin.deleteComicCover(comic.id)
+      setComics((list) => list.map((c) => (c.id === updated.id ? updated : c)))
+      setNotice(`Cover "${updated.title}" berhasil dihapus.`)
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal menghapus cover.'))
+    } finally {
+      setCoverBusyId(null)
     }
   }
 
@@ -189,12 +204,34 @@ export default function AdminComicsPage() {
                   <tr key={c.id} className="transition-colors hover:bg-surface-800/30">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <span
-                          className="flex h-12 w-9 shrink-0 items-center justify-center rounded-lg text-base"
-                          style={{ background: coverStyle(coverKeyOf(c.id)) }}
-                        >
-                          {coverEmoji(coverKeyOf(c.id))}
-                        </span>
+                        {c.cover_url ? (
+                          <div className="group/cover relative">
+                            <img
+                              src={c.cover_url}
+                              alt={c.title}
+                              className="h-12 w-9 shrink-0 rounded-lg object-cover"
+                            />
+                            <button
+                              onClick={() => deleteCover(c)}
+                              disabled={coverBusyId === c.id}
+                              className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow-lg transition-opacity group-hover/cover:opacity-100 disabled:opacity-50"
+                              title="Hapus cover"
+                            >
+                              {coverBusyId === c.id ? (
+                                <Loader2 size={10} className="animate-spin" />
+                              ) : (
+                                <ImageOff size={10} />
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className="flex h-12 w-9 shrink-0 items-center justify-center rounded-lg text-base"
+                            style={{ background: coverStyle(coverKeyOf(c.id)) }}
+                          >
+                            {coverEmoji(coverKeyOf(c.id))}
+                          </span>
+                        )}
                         <div className="min-w-0">
                           <p className="max-w-56 truncate font-medium text-surface-100">{c.title}</p>
                           <p className="truncate text-xs text-surface-500">
@@ -239,13 +276,29 @@ export default function AdminComicsPage() {
                     </td>
                     <td className="px-5 py-3.5 text-xs text-surface-400">{formatDate(c.published_at)}</td>
                     <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={() => setDeleteTarget(c)}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
-                        title="Hapus komik"
-                      >
-                        <Trash2 size={14} /> Hapus
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {c.cover_url && (
+                          <button
+                            onClick={() => deleteCover(c)}
+                            disabled={coverBusyId === c.id}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/10 disabled:opacity-50"
+                            title="Hapus cover komik"
+                          >
+                            {coverBusyId === c.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <ImageOff size={14} />
+                            )} Hapus Cover
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDeleteTarget(c)}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                          title="Hapus komik"
+                        >
+                          <Trash2 size={14} /> Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

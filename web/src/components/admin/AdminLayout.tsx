@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   BookOpen,
   Flag,
+  Gem,
   Landmark,
   LayoutDashboard,
   LogOut,
@@ -21,6 +22,7 @@ import { auth } from '../../services/auth'
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: 'Pengguna', icon: Users },
+  { to: '/admin/vvip', label: 'VVIP & Premium', icon: Gem },
   { to: '/admin/creator-applications', label: 'Pengajuan Creator', icon: UserPlus },
   { to: '/admin/creators', label: 'Creator', icon: Palette },
   { to: '/admin/comics', label: 'Komik', icon: BookOpen },

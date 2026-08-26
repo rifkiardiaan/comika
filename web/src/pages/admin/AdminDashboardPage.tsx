@@ -129,7 +129,7 @@ export default function AdminDashboardPage() {
               {pendingCreatorApps.length} Pengajuan Creator Menunggu Persetujuan
             </p>
             <p className="mt-0.5 text-xs text-surface-400">
-              {pendingCreatorApps.map((a) => a.user_name).slice(0, 3).join(', ')}
+              {pendingCreatorApps.map((a) => a.user?.name ?? '—').slice(0, 3).join(', ')}
               {pendingCreatorApps.length > 3 && ` +${pendingCreatorApps.length - 3} lainnya`}
             </p>
           </div>

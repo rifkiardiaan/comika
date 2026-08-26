@@ -22,6 +22,7 @@ class UnlockController extends Controller
 
         $message = match (true) {
             $result['owner'] => 'Episode milik Anda — tidak perlu di-unlock.',
+            $result['vvip'] ?? false => 'Episode terbuka untuk anggota VVIP.',
             ! $result['created'] => 'Episode sudah di-unlock sebelumnya.',
             default => "Episode berhasil di-unlock. {$episode->price_coin} koin digunakan.",
         };

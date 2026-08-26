@@ -19,7 +19,6 @@ import ForgotPasswordPage from '../pages/ForgotPasswordPage'
 import ResetPasswordPage from '../pages/ResetPasswordPage'
 import WalletPage from '../pages/WalletPage'
 import CreatorEarningsPage from '../pages/CreatorEarningsPage'
-import CreatorAiPage from '../pages/creator/CreatorAiPage'
 import CreatorDashboardPage from '../pages/creator/CreatorDashboardPage'
 import CreatorComicsPage from '../pages/creator/CreatorComicsPage'
 import CreatorComicDetailPage from '../pages/creator/CreatorComicDetailPage'
@@ -28,6 +27,8 @@ import ComingSoonPage from '../pages/ComingSoonPage'
 import BantuanPage from '../pages/BantuanPage'
 import KomunitasPage from '../pages/KomunitasPage'
 import BecomeCreatorPage from '../pages/BecomeCreatorPage'
+import PremiumPage from '../pages/PremiumPage'
+import PublicUserProfilePage from '../pages/PublicUserProfilePage'
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
 import AdminCreatorsPage from '../pages/admin/AdminCreatorsPage'
@@ -37,6 +38,7 @@ import AdminReportsPage from '../pages/admin/AdminReportsPage'
 import AdminGenresPage from '../pages/admin/AdminGenresPage'
 import AdminTransactionsPage from '../pages/admin/AdminTransactionsPage'
 import AdminCreatorApplicationsPage from '../pages/admin/AdminCreatorApplicationsPage'
+import AdminVvipPage from '../pages/admin/AdminVvipPage'
 
 export const router = createBrowserRouter([
   {
@@ -60,7 +62,6 @@ export const router = createBrowserRouter([
       { path: 'creator/comics/:id', element: <CreatorComicDetailPage /> },
       { path: 'creator/comics/:id/analytics', element: <CreatorAnalyticsPage /> },
       { path: 'creator/earnings', element: <CreatorEarningsPage /> },
-      { path: 'creator/ai', element: <CreatorAiPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
@@ -68,6 +69,8 @@ export const router = createBrowserRouter([
       { path: 'bantuan', element: <BantuanPage /> },
       { path: 'komunitas', element: <KomunitasPage /> },
       { path: 'become-creator', element: <BecomeCreatorPage /> },
+      { path: 'premium', element: <PremiumPage /> },
+      { path: 'user/:id', element: <PublicUserProfilePage /> },
       { path: '*', element: <ComingSoonPage title="Halaman Tidak Ditemukan" /> },
     ],
   },
@@ -87,6 +90,7 @@ export const router = createBrowserRouter([
       { path: 'reports', element: <AdminReportsPage /> },
       { path: 'genres', element: <AdminGenresPage /> },
       { path: 'transactions', element: <AdminTransactionsPage /> },
+      { path: 'vvip', element: <AdminVvipPage /> },
       { path: 'creator-applications', element: <AdminCreatorApplicationsPage /> },
     ],
   },

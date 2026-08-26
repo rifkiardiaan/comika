@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CreatorApplication;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CreatorApplicationController extends Controller
 {
@@ -42,12 +44,12 @@ class CreatorApplicationController extends Controller
         // Validasi: sudah pernah submit dalam 3 hari terakhir?
         $recent = CreatorApplication::where('user_id', $user->id)
             ->whereIn('status', [CreatorApplication::STATUS_APPROVED, CreatorApplication::STATUS_REJECTED])
-            ->where('created_at', '>=', now()->subDays(3))
+            ->where('created_at', '>=', now()->subDays(1))
             ->latest()
             ->first();
 
         if ($recent) {
-            $daysLeft = ceil($recent->created_at->addDays(3)->diffInHours(now()) / 24);
+            $daysLeft = ceil($recent->created_at->addDays(1)->diffInHours(now()) / 24);
             return response()->json([
                 'success' => false,
                 'message' => "Kamu sudah mengajukan baru-baru ini. Coba lagi dalam {$daysLeft} hari.",
@@ -145,6 +147,17 @@ class CreatorApplicationController extends Controller
             // Update role user
             $application->user->update(['role' => User::ROLE_CREATOR]);
 
+            // Kirim notifikasi ke user
+            Notification::create([
+                'id' => Str::uuid()->toString(),
+                'user_id' => $application->user_id,
+                'type' => 'creator_application_approved',
+                'data' => [
+                    'application_id' => $application->id,
+                    'reviewer_name' => $request->user()->name,
+                ],
+            ]);
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -185,6 +198,18 @@ class CreatorApplicationController extends Controller
             'reviewed_by' => $request->user()->id,
             'review_note' => $request->input('review_note'),
             'reviewed_at' => now(),
+        ]);
+
+        // Kirim notifikasi ke user
+        Notification::create([
+            'id' => Str::uuid()->toString(),
+            'user_id' => $application->user_id,
+            'type' => 'creator_application_rejected',
+            'data' => [
+                'application_id' => $application->id,
+                'reviewer_name' => $request->user()->name,
+                'review_note' => $request->input('review_note'),
+            ],
         ]);
 
         $application->load(['user:id,name,username,email,avatar_url', 'reviewer:id,name']);

@@ -29,12 +29,21 @@ export default function ComicCard({ comic, compact = false }: Props) {
       <div className="relative overflow-hidden rounded-2xl border border-surface-800 bg-surface-900 shadow-lg transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-500/60 group-hover:shadow-xl group-hover:shadow-brand-500/10">
         {/* Cover */}
         <div
-          className="relative flex aspect-[3/4] items-center justify-center"
+          className="relative flex aspect-[3/4] items-center justify-center overflow-hidden"
           style={{ background: coverStyle(key) }}
         >
-          <span className="text-5xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110">
-            {coverEmoji(key)}
-          </span>
+          {comic.cover_url ? (
+            <img
+              src={comic.cover_url}
+              alt={comic.title}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+              loading="lazy"
+            />
+          ) : (
+            <span className="text-5xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110">
+              {coverEmoji(key)}
+            </span>
+          )}
           {/* gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           {/* status badge */}

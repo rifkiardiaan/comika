@@ -110,6 +110,22 @@ export const content = {
     return data.data
   },
 
+  /** Daftar halaman episode (untuk creator). */
+  async episodePages(episodeId: number): Promise<EpisodePage[]> {
+    const { data } = await api.get<{ data: EpisodePage[] }>(`/episodes/${episodeId}/pages`)
+    return data.data
+  },
+
+  /** Ganti gambar halaman tertentu. */
+  async replacePage(pageId: number, file: File): Promise<EpisodePage> {
+    const form = new FormData()
+    form.append('image', file)
+    const { data } = await api.post<{ data: EpisodePage }>(`/episodes/pages/${pageId}`, form, {
+      params: { _method: 'PUT' },
+    })
+    return data.data
+  },
+
   /** Hapus halaman episode. */
   async deletePage(pageId: number): Promise<void> {
     await api.delete(`/episodes/pages/${pageId}`)

@@ -20,6 +20,10 @@ class AdminUserResource extends JsonResource
             'avatar_url' => $this->avatar_url,
             'role' => $this->role,
             'coin_balance' => $this->coin_balance,
+            'is_premium' => $this->isPremium(),
+            'premium_until' => $this->premium_until?->toIso8601String(),
+            'is_vvip' => $this->isVvip(),
+            'vvip_until' => $this->vvip_until?->toIso8601String(),
             'comics_count' => $this->whenCounted('comics'),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

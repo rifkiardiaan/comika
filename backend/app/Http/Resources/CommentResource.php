@@ -27,6 +27,10 @@ class CommentResource extends JsonResource
             ],
             'created_at' => $this->created_at?->toIso8601String(),
             'replies' => CommentResource::collection($this->whenLoaded('replies')),
+            'parent_user' => $this->whenLoaded('parent', fn () => [
+                'id' => $this->parent->user_id,
+                'name' => $this->parent->user?->name,
+            ]),
         ];
     }
 }

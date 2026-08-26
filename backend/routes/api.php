@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\GamificationController;
 use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PublicCreatorController;
 use App\Http\Controllers\Api\PushController;
@@ -155,6 +156,8 @@ Route::get('genres', [GenreController::class, 'index']);
 Route::get('comics', [ComicController::class, 'index']);
 // Profil creator publik (dari kartu komik / nama creator)
 Route::get('creators/{user}', [PublicCreatorController::class, 'show']);
+// Profil user publik (untuk melihat profile dari komentar)
+Route::get('users/{user}/public-profile', [PublicCreatorController::class, 'publicProfile']);
 Route::get('comics/{comic}', [ComicController::class, 'show']);
 Route::get('comics/{comic}/episodes', [EpisodeController::class, 'index']);
 Route::get('episodes/{episode}', [EpisodeController::class, 'show']);
@@ -172,7 +175,10 @@ Route::middleware(['auth:sanctum', 'creator'])->group(function () {
     Route::delete('episodes/{episode}', [EpisodeController::class, 'destroy']);
     Route::post('episodes/{episode}/publish', [EpisodeController::class, 'publish']);
 
+    Route::get('episodes/{episode}/pages', [EpisodePageController::class, 'index']);
     Route::post('episodes/{episode}/pages', [EpisodePageController::class, 'store']);
+    Route::put('episodes/pages/{page}', [EpisodePageController::class, 'update']);
+    Route::patch('episodes/pages/{page}', [EpisodePageController::class, 'update']);
     Route::delete('episodes/pages/{page}', [EpisodePageController::class, 'destroy']);
 });
 
@@ -247,6 +253,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('me/wallet', [WalletController::class, 'show']);
     Route::get('me/transactions', [WalletController::class, 'transactions']);
     Route::get('me/unlocks', [WalletController::class, 'unlocks']);
+
+    // Premium subscription
+    Route::get('subscription/plans', [SubscriptionController::class, 'plans']);
+    Route::get('subscription/status', [SubscriptionController::class, 'status']);
+    Route::post('subscription/subscribe', [SubscriptionController::class, 'subscribe']);
+    Route::post('subscription/cancel', [SubscriptionController::class, 'cancel']);
     Route::post('episodes/{episode}/unlock', [UnlockController::class, 'store']);
 });
 
@@ -255,6 +267,7 @@ Route::middleware(['auth:sanctum', 'creator'])->prefix('creator')->group(functio
     Route::get('earnings', [CreatorEarningController::class, 'index']);
     Route::get('withdrawals', [CreatorWithdrawalController::class, 'index']);
     Route::post('withdrawals', [CreatorWithdrawalController::class, 'store']);
+    Route::post('earnings/transfer-to-wallet', [CreatorEarningController::class, 'transferToWallet']);
 });
 
 // ============================================================
@@ -268,6 +281,12 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::patch('users/{user}/role', [AdminUserController::class, 'updateRole']);
     Route::delete('users/{user}', [AdminUserController::class, 'destroy']);
 
+    // VVIP management
+    Route::get('subscribers', [AdminUserController::class, 'subscribers']);
+    Route::get('subscriber-stats', [AdminUserController::class, 'subscriberStats']);
+    Route::post('users/{user}/grant-vvip', [AdminUserController::class, 'grantVvip']);
+    Route::post('users/{user}/revoke-vvip', [AdminUserController::class, 'revokeVvip']);
+
     // Manajemen creator
     Route::get('creators', [AdminCreatorController::class, 'index']);
     Route::patch('creators/{user}/verify', [AdminCreatorController::class, 'verify']);
@@ -275,6 +294,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Moderasi komik
     Route::get('comics', [AdminComicController::class, 'index']);
     Route::patch('comics/{comic}/status', [AdminComicController::class, 'updateStatus']);
+    Route::delete('comics/{comic}/cover', [AdminComicController::class, 'deleteCover']);
     Route::delete('comics/{comic}', [AdminComicController::class, 'destroy']);
 
     // Moderasi komentar

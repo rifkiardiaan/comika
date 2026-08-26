@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ComicResource;
 use App\Http\Resources\PublicCreatorResource;
 use App\Models\Comic;
+use App\Models\Comment;
 use App\Models\Follow;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -59,6 +60,37 @@ class PublicCreatorController extends Controller
             'success' => true,
             'message' => 'Success',
             'data' => new PublicCreatorResource($user),
+        ]);
+    }
+
+    /**
+     * Tampilkan profil publik user (bukan creator) — untuk melihat
+     * profile pengguna lain dari komentar.
+     */
+    public function publicProfile(User $user): JsonResponse
+    {
+        $stats = [
+            'comics_count' => $user->comics()->count(),
+            'comments_count' => Comment::where('user_id', $user->id)->count(),
+            'likes_given' => $user->likes()->count(),
+        ];
+
+        $user->setAttribute('stats', $stats);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Success',
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'avatar_url' => $user->avatar_url,
+                'role' => $user->role,
+                'is_premium' => $user->isPremium(),
+                'is_vvip' => $user->isVvip(),
+                'created_at' => $user->created_at?->toIso8601String(),
+                'stats' => $stats,
+            ],
         ]);
     }
 }

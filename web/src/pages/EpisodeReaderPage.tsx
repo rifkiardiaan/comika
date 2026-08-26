@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Coins,
+  Gem,
   Home,
   List,
   Loader2,
@@ -18,6 +19,8 @@ import { getApiErrorMessage } from '../utils/errors'
 import { auth } from '../services/auth'
 import { coverEmoji, coverKeyOf } from '../data/mock'
 import { readingTime } from '../utils/format'
+import AdBanner from '../components/AdBanner'
+import AuthWall from '../components/AuthWall'
 import type { ComicDetail, EpisodeDetail } from '../types'
 
 const gradients = ['#1e1b4b', '#312e81', '#4c1d95', '#831843', '#7f1d1d', '#14532d', '#0c4a6e', '#292524']
@@ -37,6 +40,8 @@ export default function EpisodeReaderPage() {
 
   const user = auth.getStoredUser()
   const isLoggedIn = user !== null
+  const isPremium = user?.is_premium ?? false
+  const isVvip = user?.is_vvip ?? false
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -112,7 +117,32 @@ export default function EpisodeReaderPage() {
     )
   }
 
-  const locked = episode.is_locked === true
+  // Auth wall: jika belum login, tampilkan halaman login
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-surface-950">
+        <header className="sticky top-0 z-40 border-b border-surface-800/70 bg-surface-950/90 backdrop-blur-lg">
+          <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
+            <Link
+              to={`/comic/${comic.id}`}
+              className="flex items-center gap-2 text-sm text-surface-300 hover:text-surface-50"
+            >
+              <ArrowLeft size={18} />
+              <span className="hidden sm:inline">{comic.title}</span>
+              <span className="sm:hidden">Kembali</span>
+            </Link>
+          </div>
+        </header>
+        <AuthWall
+          title="Masuk untuk Membaca Episode"
+          description={`Kamu harus masuk atau daftar akun untuk membaca episode "${episode.title}" dari komik "${comic.title}".`}
+        />
+      </div>
+    )
+  }
+
+  // VVIP users: episode locked = treated as unlocked (free access)
+  const locked = episode.is_locked === true && !isVvip
   const pages = episode.pages ?? []
 
   return (
@@ -186,46 +216,33 @@ export default function EpisodeReaderPage() {
               <p className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</p>
             )}
 
-            {!isLoggedIn ? (
-              <>
-                <p className="mt-4 text-sm text-surface-400">
-                  Masuk untuk membuka episode premium ini dengan koin.
-                </p>
-                <button
-                  onClick={() => navigate('/login')}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110"
-                >
-                  <LogIn size={16} /> Masuk untuk Lanjut
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleUnlock}
-                  disabled={unlocking}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 py-3 text-sm font-bold text-white shadow-lg shadow-amber-600/30 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {unlocking ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}
-                  {unlocking ? 'Membuka Episode…' : `Unlock dengan ${episode.price_coin} Koin`}
-                </button>
-                <div className="mt-4 flex items-center justify-between rounded-xl border border-surface-800 bg-surface-950 px-4 py-3 text-sm">
-                  <span className="flex items-center gap-1.5 text-surface-400">
-                    <Wallet size={14} /> Saldo kamu
-                  </span>
-                  <span className="flex items-center gap-1 font-semibold text-amber-300">
-                    <Coins size={14} /> {balance?.toLocaleString('id-ID') ?? '…'}
-                  </span>
-                </div>
-                {balance !== null && balance < episode.price_coin && (
-                  <Link
-                    to="/wallet"
-                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand-300 underline-offset-2 hover:underline"
-                  >
-                    Saldo tidak cukup — top-up koin <ArrowRight size={12} />
-                  </Link>
-                )}
-              </>
+            <button
+              onClick={handleUnlock}
+              disabled={unlocking}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 py-3 text-sm font-bold text-white shadow-lg shadow-amber-600/30 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {unlocking ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}
+              {unlocking ? 'Membuka Episode…' : `Unlock dengan ${episode.price_coin} Koin`}
+            </button>
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-surface-800 bg-surface-950 px-4 py-3 text-sm">
+              <span className="flex items-center gap-1.5 text-surface-400">
+                <Wallet size={14} /> Saldo kamu
+              </span>
+              <span className="flex items-center gap-1 font-semibold text-amber-300">
+                <Coins size={14} /> {balance?.toLocaleString('id-ID') ?? '…'}
+              </span>
+            </div>
+            {balance !== null && balance < episode.price_coin && (
+              <Link
+                to="/wallet"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand-300 underline-offset-2 hover:underline"
+              >
+                Saldo tidak cukup — top-up koin <ArrowRight size={12} />
+              </Link>
             )}
+            <p className="mt-3 text-center text-xs text-surface-500">
+              <Link to="/premium" className="text-purple-400 hover:text-purple-300">Upgrade VVIP</Link> untuk buka semua episode gratis!
+            </p>
           </div>
         </main>
       ) : (
@@ -238,7 +255,7 @@ export default function EpisodeReaderPage() {
               {pages.length} halaman · {readingTime(pages.length)}
               {episode.is_premium && (
                 <span className="ml-2 rounded-full bg-emerald-500/15 px-2 py-0.5 font-semibold text-emerald-300">
-                  Premium terbuka
+                  {isVvip ? 'VVIP — Gratis' : 'Premium terbuka'}
                 </span>
               )}
             </p>
@@ -252,38 +269,42 @@ export default function EpisodeReaderPage() {
             pages.map((page, i) => {
               const failed = failedPages.has(page.id)
               return (
-                <div
-                  key={page.id}
-                  className="relative flex min-h-[70vh] items-center justify-center border-b border-surface-800/40"
-                  style={{
-                    background: `linear-gradient(160deg, ${gradients[i % gradients.length]}, ${gradients[(i + 3) % gradients.length]})`,
-                  }}
-                >
-                  {!failed ? (
-                    <img
-                      src={page.image_url}
-                      alt={`Halaman ${page.page_number}`}
-                      loading="lazy"
-                      onError={() =>
-                        setFailedPages((prev) => {
-                          const next = new Set(prev)
-                          next.add(page.id)
-                          return next
-                        })
-                      }
-                      className="w-full"
-                    />
-                  ) : (
-                    /* Placeholder hanya tampil bila gambar gagal dimuat */
-                    <div className="flex flex-col items-center gap-3 py-10 text-center">
-                      <span className="text-5xl drop-shadow-lg">{coverEmoji(coverKeyOf(comic.id))}</span>
-                      <span className="font-display text-3xl font-bold text-white/90">
-                        Halaman {page.page_number}
-                      </span>
-                      <span className="max-w-xs text-sm text-white/60">
-                        Panel ilustrasi webtoon — halaman penuh, scroll vertikal.
-                      </span>
-                    </div>
+                <div key={page.id}>
+                  <div
+                    className="relative flex min-h-[70vh] items-center justify-center border-b border-surface-800/40"
+                    style={{
+                      background: `linear-gradient(160deg, ${gradients[i % gradients.length]}, ${gradients[(i + 3) % gradients.length]})`,
+                    }}
+                  >
+                    {!failed ? (
+                      <img
+                        src={page.image_url}
+                        alt={`Halaman ${page.page_number}`}
+                        loading="lazy"
+                        onError={() =>
+                          setFailedPages((prev) => {
+                            const next = new Set(prev)
+                            next.add(page.id)
+                            return next
+                          })
+                        }
+                        className="w-full"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 py-10 text-center">
+                        <span className="text-5xl drop-shadow-lg">{coverEmoji(coverKeyOf(comic.id))}</span>
+                        <span className="font-display text-3xl font-bold text-white/90">
+                          Halaman {page.page_number}
+                        </span>
+                        <span className="max-w-xs text-sm text-white/60">
+                          Panel ilustrasi webtoon — halaman penuh, scroll vertikal.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Iklan full page setiap 3 halaman (hanya untuk non-premium & non-vvip) */}
+                  {!isPremium && !isVvip && (i + 1) % 3 === 0 && i < pages.length - 1 && (
+                    <AdBanner onUpgrade={() => navigate('/premium')} variant="full" />
                   )}
                 </div>
               )

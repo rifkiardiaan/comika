@@ -1,4 +1,4 @@
-import { HelpCircle, ChevronDown, ChevronUp, Mail, ExternalLink } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 

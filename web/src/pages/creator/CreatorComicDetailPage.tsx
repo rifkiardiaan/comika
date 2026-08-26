@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   AlertCircle,
@@ -14,11 +14,11 @@ import {
   Send,
   Star,
   Trash2,
-  Upload,
   X,
 } from 'lucide-react'
 import { StatusBadge } from '../../components/admin/Badge'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
+import EpisodePagesManager from '../../components/creator/EpisodePagesManager'
 import { auth } from '../../services/auth'
 import { content } from '../../services/content'
 import { creator } from '../../services/creator'
@@ -44,12 +44,8 @@ export default function CreatorComicDetailPage() {
   const [epSubmitting, setEpSubmitting] = useState(false)
   const [epError, setEpError] = useState('')
 
-  // Upload halaman
-  const [uploadFor, setUploadFor] = useState<CreatorEpisode | null>(null)
-  const [files, setFiles] = useState<File[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState('')
-  const pageFileRef = useRef<HTMLInputElement>(null)
+  // Kelola halaman episode
+  const [pagesEpisode, setPagesEpisode] = useState<CreatorEpisode | null>(null)
 
   // Hapus episode
   const [deleteTarget, setDeleteTarget] = useState<CreatorEpisode | null>(null)
@@ -96,25 +92,6 @@ export default function CreatorComicDetailPage() {
       setEpError(getApiErrorMessage(err, 'Gagal membuat episode.'))
     } finally {
       setEpSubmitting(false)
-    }
-  }
-
-  const pickPages = () => pageFileRef.current?.click()
-
-  const confirmUpload = async () => {
-    if (!uploadFor || files.length === 0) return
-    setUploading(true)
-    setUploadError('')
-    try {
-      const uploaded = await content.uploadPages(uploadFor.id, files)
-      setNotice(`${uploaded.length} halaman berhasil diunggah ke episode ${uploadFor.number}.`)
-      setUploadFor(null)
-      setFiles([])
-      await fetchComic()
-    } catch (err) {
-      setUploadError(getApiErrorMessage(err, 'Gagal mengunggah halaman.'))
-    } finally {
-      setUploading(false)
     }
   }
 
@@ -293,15 +270,11 @@ export default function CreatorComicDetailPage() {
                       </span>
                     )}
                     <button
-                      onClick={() => {
-                        setUploadFor(ep)
-                        setFiles([])
-                        setUploadError('')
-                      }}
+                      onClick={() => setPagesEpisode(ep)}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-surface-700 bg-surface-950 px-3 py-1.5 text-xs font-medium text-sky-300 transition-colors hover:border-sky-500/50"
-                      title="Unggah halaman"
+                      title="Kelola halaman"
                     >
-                      <Upload size={13} /> Halaman
+                      <FileImage size={13} /> Halaman
                     </button>
                     <button
                       onClick={() => setDeleteTarget(ep)}
@@ -421,75 +394,16 @@ export default function CreatorComicDetailPage() {
         </div>
       )}
 
-      {/* ====== Modal upload halaman ====== */}
-      {uploadFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={uploading ? undefined : () => setUploadFor(null)} />
-          <div className="relative w-full max-w-md animate-slide-up rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-2xl shadow-black/60">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="flex items-center gap-2 font-display text-lg font-bold text-surface-50">
-                  <Upload size={18} className="text-sky-300" /> Unggah Halaman
-                </h3>
-                <p className="mt-1 text-xs text-surface-500">
-                  Episode {uploadFor.number} — {uploadFor.title}. Maks 60 gambar (jpeg/png/webp, ≤3MB per file).
-                </p>
-              </div>
-              <button
-                onClick={() => setUploadFor(null)}
-                disabled={uploading}
-                className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-50"
-                aria-label="Tutup"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={pickPages}
-              className="mt-5 flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-700 bg-surface-950 px-4 py-8 text-sm text-surface-400 transition-colors hover:border-brand-500/50 hover:text-surface-200"
-            >
-              <FileImage size={28} className="text-surface-500" />
-              {files.length === 0 ? 'Klik untuk pilih gambar halaman (bisa banyak sekaligus)' : `${files.length} file dipilih`}
-              {files.length > 0 && (
-                <span className="max-w-full truncate text-xs text-surface-500">{files.map((f) => f.name).join(', ')}</span>
-              )}
-            </button>
-            <input
-              ref={pageFileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              className="hidden"
-              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-            />
-
-            {uploadError && (
-              <p className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-2.5 text-sm text-red-300">
-                <AlertCircle size={15} /> {uploadError}
-              </p>
-            )}
-
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                onClick={() => setUploadFor(null)}
-                disabled={uploading}
-                className="rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium text-surface-300 transition-colors hover:bg-surface-800 disabled:opacity-50"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmUpload}
-                disabled={uploading || files.length === 0}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-600/25 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
-                {uploading ? 'Mengunggah…' : `Unggah ${files.length} Halaman`}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ====== Kelola Halaman Episode ====== */}
+      {pagesEpisode && (
+        <EpisodePagesManager
+          episodeId={pagesEpisode.id}
+          episodeNumber={pagesEpisode.number}
+          episodeTitle={pagesEpisode.title}
+          open={!!pagesEpisode}
+          onClose={() => setPagesEpisode(null)}
+          onUpdated={fetchComic}
+        />
       )}
 
       <ConfirmDialog

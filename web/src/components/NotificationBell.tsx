@@ -2,46 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bell, BellRing, CheckCheck } from 'lucide-react'
 import { notifications as notificationsApi } from '../services/notifications'
-import * as localNotif from '../services/localNotifications'
 import { notificationDescription, notificationTarget, notificationTitle } from '../utils/notifications'
 import { timeAgo } from '../utils/format'
 import type { AppNotification } from '../types'
 import NotificationIcon from './NotificationIcon'
 
-/** Tipe unified: bisa API notification atau local notification. */
-type UnifiedNotification =
-  | (AppNotification & { source: 'api' })
-  | (localNotif.LocalNotification & { source: 'local' })
-
 /** Lonceng notifikasi di Navbar: badge jumlah belum dibaca + dropdown. */
 export default function NotificationBell() {
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
-  const [items, setItems] = useState<UnifiedNotification[]>([])
+  const [items, setItems] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
-  const refreshCount = async () => {
-    let apiCount = 0
-    try {
-      apiCount = await notificationsApi.unreadCount()
-    } catch {
-      // abaikan
-    }
-    const localCount = localNotif.unreadCount()
-    setUnread(apiCount + localCount)
+  const refreshCount = () => {
+    notificationsApi.unreadCount().then(setUnread).catch(() => {})
   }
 
   useEffect(() => {
     refreshCount()
     const id = setInterval(refreshCount, 60_000)
-    // Dengarkan event dari local notifications
-    window.addEventListener('comika:notification', refreshCount)
-    return () => {
-      clearInterval(id)
-      window.removeEventListener('comika:notification', refreshCount)
-    }
+    return () => clearInterval(id)
   }, [])
 
   useEffect(() => {
@@ -57,70 +39,34 @@ export default function NotificationBell() {
     setOpen(next)
     if (next) {
       setLoading(true)
-
-      // Ambil notifikasi dari API
-      let apiItems: AppNotification[] = []
       try {
         const res = await notificationsApi.list(1)
-        apiItems = res.data
+        setItems(res.data)
       } catch {
-        apiItems = []
+        setItems([])
       }
-
-      // Ambil notifikasi lokal
-      const localItems = localNotif.getNotifications()
-
-      // Gabungkan & sort by created_at DESC
-      const merged: UnifiedNotification[] = [
-        ...apiItems.map((n) => ({ ...n, source: 'api' as const })),
-        ...localItems.map((n) => ({ ...n, source: 'local' as const })),
-      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
-      setItems(merged)
       setLoading(false)
       refreshCount()
     }
   }
 
-  const handleClickItem = (n: UnifiedNotification) => {
-    if (n.source === 'local') {
-      if (!n.read) {
-        localNotif.markRead(n.id)
-        setItems((prev) => prev.map((i) => (i.id === n.id && i.source === 'local' ? { ...i, read: true } : i)))
-        refreshCount()
-      }
-    } else {
-      if (!(n as AppNotification).read_at) {
-        notificationsApi.markRead(n.id).then(refreshCount).catch(() => {})
-        setItems((prev) => prev.map((i) => (i.id === n.id && i.source === 'api' ? { ...i, read_at: new Date().toISOString() } : i)))
-      }
+  const handleClickItem = (n: AppNotification) => {
+    if (!n.read_at) {
+      notificationsApi.markRead(n.id).then(refreshCount).catch(() => {})
+      setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, read_at: new Date().toISOString() } : i)))
     }
     setOpen(false)
     navigate(notificationTarget(n))
   }
 
   const handleMarkAll = async () => {
-    // Tandai semua API notif
     try {
       await notificationsApi.markAllRead()
+      setItems((prev) => prev.map((i) => ({ ...i, read_at: i.read_at ?? new Date().toISOString() })))
+      refreshCount()
     } catch {
-      // abaikan
+      // abaikan — badge akan tetap tampil
     }
-    // Tandai semua local notif
-    localNotif.markAllRead()
-
-    setItems((prev) =>
-      prev.map((i) => {
-        if (i.source === 'api') return { ...i, read_at: i.read_at ?? new Date().toISOString() }
-        return { ...i, read: true }
-      }),
-    )
-    refreshCount()
-  }
-
-  const isUnread = (n: UnifiedNotification) => {
-    if (n.source === 'local') return !n.read
-    return !(n as AppNotification).read_at
   }
 
   return (
@@ -173,12 +119,12 @@ export default function NotificationBell() {
                     <span className="flex items-start justify-between gap-2">
                       <span
                         className={`truncate text-sm font-semibold ${
-                          isUnread(n) ? 'text-surface-50' : 'text-surface-300'
+                          n.read_at ? 'text-surface-300' : 'text-surface-50'
                         }`}
                       >
                         {notificationTitle(n)}
                       </span>
-                      {isUnread(n) && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />}
+                      {!n.read_at && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />}
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-surface-400">
                       {notificationDescription(n)}

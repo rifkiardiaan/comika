@@ -78,7 +78,8 @@ class ComicController extends Controller
             'episodes' => fn ($q) => $q
                 ->where('status', 'published')
                 ->orderBy('number')
-                ->withCount('pages'),
+                ->withCount('pages')
+                ->with(['pages' => fn ($p) => $p->orderBy('page_number')->limit(1)]),
         ])->loadCount('episodes');
 
         // Guard sanctum eksplisit: route ini publik, token opsional

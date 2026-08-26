@@ -6,6 +6,7 @@ use App\Models\CoinPackage;
 use App\Models\CreatorEarning;
 use App\Models\Episode;
 use App\Models\EpisodeUnlock;
+use App\Models\Subscription;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Withdrawal;
@@ -80,6 +81,11 @@ class MonetizationService
 
                 if ($isOwner) {
                     return $this->ownerResult($user);
+                }
+
+                // VVIP users get all premium episodes for free
+                if (Subscription::isUserVvip($user)) {
+                    return $this->vvipResult($user, $episode);
                 }
 
                 if ($episode->status !== Episode::STATUS_PUBLISHED) {
@@ -160,6 +166,23 @@ class MonetizationService
             'is_unlocked' => true,
             'owner' => true,
             'created' => false,
+        ];
+    }
+
+    /**
+     * @return array{unlock: null, transaction: null, earning: null, balance: int, is_unlocked: true, owner: false, created: false, vvip: true}
+     */
+    private function vvipResult(User $user, Episode $episode): array
+    {
+        return [
+            'unlock' => null,
+            'transaction' => null,
+            'earning' => null,
+            'balance' => $this->walletService->balance($user),
+            'is_unlocked' => true,
+            'owner' => false,
+            'created' => false,
+            'vvip' => true,
         ];
     }
 
@@ -333,7 +356,7 @@ class MonetizationService
     /**
      * Tandai earning pending sebagai paid (FIFO) hingga nominal terpenuhi.
      */
-    private function markEarningsPaid(int $creatorId, float $amount): void
+    public function markEarningsPaid(int $creatorId, float $amount): void
     {
         $remaining = $amount;
 

@@ -12,6 +12,10 @@ export interface User {
   avatar_url: string | null
   role: Role
   coin_balance: number
+  is_premium: boolean
+  premium_until: string | null
+  is_vvip: boolean
+  vvip_until: string | null
   email_verified_at: string | null
   is_email_verified: boolean
   created_at: string
@@ -68,6 +72,7 @@ export interface Episode {
   view_count: number
   like_count: number
   page_count?: number
+  thumbnail_url?: string | null
   /** Status premium (diisi API saat user login): true bila episode bisa dibaca. */
   is_unlocked?: boolean
   /** Status premium: true bila episode terkunci dan butuh unlock. */
@@ -231,6 +236,7 @@ export interface Comment {
   like_count: number
   created_at: string
   replies?: Comment[]
+  parent_user?: { id: number; name: string } | null
 }
 
 /* ------------------------------------------------------------------ */
@@ -302,6 +308,8 @@ export type AppNotificationType =
   | 'comment_reply'
   | 'transaction'
   | 'system'
+  | 'creator_application_approved'
+  | 'creator_application_rejected'
 
 export interface AppNotificationData {
   comic_id?: number
@@ -490,6 +498,10 @@ export interface AdminWithdrawal extends Withdrawal {
 
 export interface AdminUser extends User {
   comics_count: number
+  is_premium: boolean
+  premium_until: string | null
+  is_vvip: boolean
+  vvip_until: string | null
 }
 
 export interface AdminCreator {

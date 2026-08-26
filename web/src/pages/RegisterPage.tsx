@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Mail, Lock, User as UserIcon, UserPlus, Loader2 } from 'lucide-react'
 import { auth } from '../services/auth'
 
@@ -16,7 +16,16 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<FieldError>({})
   const [loading, setLoading] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(() => !!auth.getStoredUser())
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const sync = () => setLoggedIn(!!auth.getStoredUser())
+    window.addEventListener('comika:user', sync)
+    return () => window.removeEventListener('comika:user', sync)
+  }, [])
+
+  if (loggedIn) return <Navigate to="/" replace />
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()

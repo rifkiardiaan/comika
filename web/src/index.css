@@ -78,3 +78,215 @@ body {
   background-clip: padding-box;
   border: 2px solid transparent;
 }
+
+/* ==============================
+   VVIP Animations & Effects
+   ==============================
+
+/* VVIP Badge Animations */
+@keyframes vvip-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes vvip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+  50% { box-shadow: 0 0 12px 2px rgba(168, 85, 247, 0.3); }
+}
+
+@keyframes vvip-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes vvip-border-flow {
+  0% { border-color: rgba(168, 85, 247, 0.5); }
+  33% { border-color: rgba(236, 72, 153, 0.5); }
+  66% { border-color: rgba(139, 92, 246, 0.5); }
+  100% { border-color: rgba(168, 85, 247, 0.5); }
+}
+
+@keyframes vvip-glow-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.badge-vvip {
+  position: relative;
+  overflow: hidden;
+  animation: vvip-pulse 2s ease-in-out infinite, vvip-float 3s ease-in-out infinite;
+}
+
+.badge-vvip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: vvip-shimmer 3s ease-in-out infinite;
+}
+
+.badge-vvip-gradient {
+  background: linear-gradient(135deg, #7c3aed, #ec4899, #8b5cf6, #ec4899, #7c3aed);
+  background-size: 300% 300%;
+  animation: gradient-shift 4s ease infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-vvip-gradient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: vvip-shimmer 2s ease-in-out infinite;
+}
+
+.badge-premium {
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: vvip-shimmer 4s ease-in-out infinite;
+}
+
+/* VVIP Card Glow Effect */
+@keyframes card-glow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes card-border-glow {
+  0%, 100% { border-color: rgba(168, 85, 247, 0.3); }
+  50% { border-color: rgba(236, 72, 153, 0.5); }
+}
+
+.vvip-card-glow {
+  animation: card-border-glow 3s ease-in-out infinite;
+}
+
+.vvip-card-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(236, 72, 153, 0.08), rgba(139, 92, 246, 0.1));
+  animation: card-glow 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* VVIP Avatar Glow Effect */
+@keyframes avatar-ring {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes avatar-outer-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px 3px rgba(168, 85, 247, 0.4),
+                0 0 30px 6px rgba(236, 72, 153, 0.2),
+                0 0 45px 10px rgba(139, 92, 246, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(168, 85, 247, 0.5),
+                0 0 40px 10px rgba(236, 72, 153, 0.3),
+                0 0 60px 15px rgba(139, 92, 246, 0.15);
+  }
+}
+
+.avatar-vvip-glow {
+  position: relative;
+  display: inline-block;
+}
+
+.avatar-vvip-glow::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(168, 85, 247, 0.9),
+    rgba(236, 72, 153, 0.9),
+    rgba(139, 92, 246, 0.9),
+    rgba(244, 114, 182, 0.9),
+    rgba(168, 85, 247, 0.9)
+  );
+  animation: avatar-ring 3s linear infinite;
+  z-index: 0;
+}
+
+.avatar-vvip-glow::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--color-surface-900);
+  z-index: 1;
+}
+
+.avatar-vvip-glow > * {
+  border-radius: 50% !important;
+  position: relative;
+  z-index: 2;
+  animation: avatar-outer-glow 2s ease-in-out infinite;
+}
+
+/* VVIP Benefits Card Hover */
+.vvip-benefit-card {
+  transition: all 0.3s ease;
+}
+
+.vvip-benefit-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(168, 85, 247, 0.3);
+}
+
+/* VVIP Sparkle Effect */
+.vvip-sparkle {
+  position: relative;
+}
+
+.vvip-sparkle::before,
+.vvip-sparkle::after {
+  content: '✨';
+  position: absolute;
+  font-size: 12px;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.vvip-sparkle::before {
+  top: -5px;
+  left: -5px;
+  animation-delay: 0s;
+}
+
+.vvip-sparkle::after {
+  bottom: -5px;
+  right: -5px;
+  animation-delay: 1s;
+}

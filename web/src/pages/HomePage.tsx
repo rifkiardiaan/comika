@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Flame, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowRight, Flame, Loader2, Sparkles, TrendingUp } from 'lucide-react'
 import ComicCard from '../components/ComicCard'
 import { content } from '../services/content'
+import { auth } from '../services/auth'
 import { coverEmoji, coverKeyOf, coverStyle } from '../data/mock'
 import type { Comic } from '../types'
 
@@ -10,18 +11,35 @@ export default function HomePage() {
   const [trending, setTrending] = useState<Comic[]>([])
   const [recommended, setRecommended] = useState<Comic[]>([])
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(() => auth.getStoredUser())
+
+  // All comics with infinite scroll
+  const [allComics, setAllComics] = useState<Comic[]>([])
+  const [allPage, setAllPage] = useState(1)
+  const [allLastPage, setAllLastPage] = useState(1)
+  const [allLoading, setAllLoading] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const sync = () => setUser(auth.getStoredUser())
+    window.addEventListener('comika:user', sync)
+    return () => window.removeEventListener('comika:user', sync)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const [popular, rating] = await Promise.all([
+        const [popular, rating, all] = await Promise.all([
           content.comics({ sort: 'popular', per_page: 10 }),
           content.comics({ sort: 'rating', per_page: 8 }),
+          content.comics({ sort: 'newest', page: 1, per_page: 12 }),
         ])
         if (cancelled) return
         setTrending(popular.data)
         setRecommended(rating.data)
+        setAllComics(all.data)
+        setAllLastPage(all.meta.last_page)
       } catch {
         // abaikan — halaman tetap tampil dengan data kosong
       } finally {
@@ -32,6 +50,37 @@ export default function HomePage() {
       cancelled = true
     }
   }, [])
+
+  // Load more comics on scroll
+  const loadMore = useCallback(async () => {
+    if (allLoading || allPage >= allLastPage) return
+    setAllLoading(true)
+    try {
+      const nextPage = allPage + 1
+      const res = await content.comics({ sort: 'newest', page: nextPage, per_page: 12 })
+      setAllComics((prev) => [...prev, ...res.data])
+      setAllPage(nextPage)
+      setAllLastPage(res.meta.last_page)
+    } catch {
+      // abaikan
+    } finally {
+      setAllLoading(false)
+    }
+  }, [allPage, allLastPage, allLoading])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore()
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore])
 
   const hero = trending[0]
   const heroLoading = loading && !hero
@@ -162,28 +211,57 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="relative overflow-hidden rounded-3xl border border-brand-500/30 bg-gradient-to-r from-brand-900/60 via-surface-900 to-pink-900/40 p-8 sm:p-12">
-          <div className="relative z-10 max-w-xl">
-            <h2 className="font-display text-2xl font-bold text-surface-50 sm:text-3xl">
-              Punya cerita untuk dibagikan?
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-surface-300 sm:text-base">
-              Terbitkan komikmu di COMIKA, jangkau ribuan pembaca, dan mulai dapatkan penghasilan dari
-              karyamu.
-            </p>
-            <Link
-              to="/register"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-brand-500/30 transition-all hover:brightness-110"
-            >
-              Mulai Jadi Creator <ArrowRight size={16} />
-            </Link>
-          </div>
-          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-brand-500/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 right-24 h-40 w-40 rounded-full bg-pink-500/20 blur-3xl" />
+      {/* Semua Komik — Infinite Scroll */}
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div>
+          <h2 className="flex items-center gap-2 font-display text-xl font-bold text-surface-50">
+            📚 Semua Komik
+          </h2>
+          <p className="mt-1 text-sm text-surface-400">Gulir ke bawah untuk melihat semua komik</p>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {loading ? (
+            <SectionSkeleton count={12} />
+          ) : (
+            allComics.map((comic) => <ComicCard key={comic.id} comic={comic} />)
+          )}
+        </div>
+        {!loading && allComics.length === 0 && (
+          <p className="mt-8 text-center text-sm text-surface-500">Belum ada komik yang terbit.</p>
+        )}
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} className="flex items-center justify-center py-8">
+          {allLoading && <Loader2 size={20} className="animate-spin text-brand-400" />}
+          {!allLoading && allPage >= allLastPage && allComics.length > 0 && (
+            <p className="text-xs text-surface-500">Semua komik sudah ditampilkan ✨</p>
+          )}
         </div>
       </section>
+
+      {/* CTA */}
+      {!user && (
+        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+          <div className="relative overflow-hidden rounded-3xl border border-brand-500/30 bg-gradient-to-r from-brand-900/60 via-surface-900 to-pink-900/40 p-8 sm:p-12">
+            <div className="relative z-10 max-w-xl">
+              <h2 className="font-display text-2xl font-bold text-surface-50 sm:text-3xl">
+                Punya cerita untuk dibagikan?
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-surface-300 sm:text-base">
+                Terbitkan komikmu di COMIKA, jangkau ribuan pembaca, dan mulai dapatkan penghasilan dari
+                karyamu.
+              </p>
+              <Link
+                to="/register"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-brand-500/30 transition-all hover:brightness-110"
+              >
+                Mulai Jadi Creator <ArrowRight size={16} />
+              </Link>
+            </div>
+            <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-brand-500/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 right-24 h-40 w-40 rounded-full bg-pink-500/20 blur-3xl" />
+          </div>
+        </section>
+      )}
     </div>
   )
 }

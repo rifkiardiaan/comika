@@ -77,6 +77,11 @@ export const admin = {
     await api.delete(`/admin/comics/${id}`)
   },
 
+  async deleteComicCover(id: number): Promise<AdminComic> {
+    const { data } = await api.delete<{ data: AdminComic }>(`/admin/comics/${id}/cover`)
+    return data.data
+  },
+
   // ============ Comments ============
   async comments(params: { q?: string; status?: CommentModerationStatus | 'deleted'; page?: number } = {}): Promise<ListResponse<AdminComment>> {
     const { data } = await api.get<ListResponse<AdminComment>>('/admin/comments', { params })
@@ -144,6 +149,27 @@ export const admin = {
     payload: { status: WithdrawalStatus; admin_note?: string },
   ): Promise<AdminWithdrawal> {
     const { data } = await api.patch<{ data: AdminWithdrawal }>(`/admin/withdrawals/${id}/status`, payload)
+    return data.data
+  },
+
+  // ============ VVIP Management ============
+  async subscriberStats(): Promise<{ vvip_active: number; premium_active: number; total: number }> {
+    const { data } = await api.get<{ data: { vvip_active: number; premium_active: number; total: number } }>('/admin/subscriber-stats')
+    return data.data
+  },
+
+  async subscribers(params: { q?: string; tier?: 'premium' | 'vvip'; page?: number } = {}): Promise<ListResponse<AdminUser>> {
+    const { data } = await api.get<ListResponse<AdminUser>>('/admin/subscribers', { params })
+    return data
+  },
+
+  async grantVvip(userId: number, days: number): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${userId}/grant-vvip`, { days })
+    return data.data
+  },
+
+  async revokeVvip(userId: number): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${userId}/revoke-vvip`)
     return data.data
   },
 }

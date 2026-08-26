@@ -54,4 +54,15 @@ export const community = {
     const { data } = await api.post<{ data: Comment }>(`/comics/${comicId}/comments`, payload)
     return data.data
   },
+
+  /** Toggle like pada komentar. */
+  async toggleCommentLike(commentId: number): Promise<{ liked: boolean; like_count: number }> {
+    const { data } = await api.post<{ data: { liked: boolean; like_count: number } }>(`/comments/${commentId}/like`)
+    return data.data
+  },
+
+  /** Hapus komentar (milik sendiri). */
+  async deleteComment(commentId: number): Promise<void> {
+    await api.delete(`/comments/${commentId}`)
+  },
 }

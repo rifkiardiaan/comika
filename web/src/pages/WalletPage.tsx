@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertCircle,
+  Banknote,
   CheckCircle2,
   Coins,
+  Landmark,
   Loader2,
   Lock,
   RefreshCw,
@@ -18,7 +20,7 @@ import { auth } from '../services/auth'
 import { monetization } from '../services/monetization'
 import { getApiErrorMessage } from '../utils/errors'
 import { formatDate, formatRupiah } from '../utils/format'
-import type { CoinPackage, Transaction, TransactionStatus, TransactionType, WalletSummary } from '../types'
+import type { CoinPackage, EarningsSummary, Transaction, TransactionStatus, TransactionType, WalletSummary } from '../types'
 
 const statusTone: Record<TransactionStatus, 'green' | 'red' | 'amber' | 'slate'> = {
   success: 'green',
@@ -35,7 +37,6 @@ const typeLabel: Record<TransactionType, string> = {
 }
 
 export default function WalletPage() {
-  // Stabilkan referensi user agar useEffect tidak terpicu ulang tiap render
   const [user] = useState(() => auth.getStoredUser())
   const [wallet, setWallet] = useState<WalletSummary | null>(null)
   const [packages, setPackages] = useState<CoinPackage[]>([])
@@ -44,7 +45,17 @@ export default function WalletPage() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [notice] = useState('')
+  const [notice, setNotice] = useState('')
+
+  // Purchase state
+  const [purchasingId, setPurchasingId] = useState<number | null>(null)
+
+  // Affiliate transfer state
+  const [affiliateSummary, setAffiliateSummary] = useState<EarningsSummary | null>(null)
+  const [transferAmount, setTransferAmount] = useState('')
+  const [transferLoading, setTransferLoading] = useState(false)
+  const [transferError, setTransferError] = useState('')
+  const [transferNotice, setTransferNotice] = useState('')
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -71,9 +82,23 @@ export default function WalletPage() {
     }
   }, [page, user])
 
+  // Fetch affiliate summary (only for creators)
+  const fetchAffiliateSummary = useCallback(async () => {
+    if (user?.role !== 'creator') return
+    try {
+      const res = await monetization.earnings(1)
+      setAffiliateSummary(res.summary)
+    } catch {
+      // abaikan
+    }
+  }, [user])
+
   useEffect(() => {
-    if (user) fetchAll()
-  }, [user, fetchAll])
+    if (user) {
+      fetchAll()
+      fetchAffiliateSummary()
+    }
+  }, [user, fetchAll, fetchAffiliateSummary])
 
   if (!user) {
     return (
@@ -94,6 +119,57 @@ export default function WalletPage() {
       </div>
     )
   }
+
+  const handlePurchase = async (pkg: CoinPackage) => {
+    setPurchasingId(pkg.id)
+    setError('')
+    setNotice('')
+    try {
+      await monetization.purchase(pkg.id)
+      setNotice(`Pembelian berhasil! ${pkg.coins.toLocaleString('id-ID')} koin telah ditambahkan ke dompet Anda.`)
+      await fetchAll()
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal membeli koin.'))
+    } finally {
+      setPurchasingId(null)
+    }
+  }
+
+  const handleTransferFromAffiliate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setTransferError('')
+    setTransferNotice('')
+
+    const amount = Number(transferAmount.replace(/\D/g, '')) || 0
+
+    if (amount <= 0) {
+      setTransferError('Nominal harus lebih dari 0.')
+      return
+    }
+
+    if (amount > (affiliateSummary?.available ?? 0)) {
+      setTransferError('Saldo affiliate tidak mencukupi.')
+      return
+    }
+
+    setTransferLoading(true)
+    try {
+      const result = await monetization.transferToWallet(amount)
+      setTransferNotice(
+        `Berhasil transfer ${result.coins_added.toLocaleString('id-ID')} koin dari saldo affiliate ke dompet.`
+      )
+      setTransferAmount('')
+      await fetchAll()
+      await fetchAffiliateSummary()
+    } catch (err) {
+      setTransferError(getApiErrorMessage(err, 'Gagal transfer dari affiliate.'))
+    } finally {
+      setTransferLoading(false)
+    }
+  }
+
+  const transferAmountNumber = Number(transferAmount.replace(/\D/g, '')) || 0
+  const transferCoins = Math.floor(transferAmountNumber / 100)
 
   return (
     <div className="mx-auto max-w-7xl animate-fade-in px-4 py-10 sm:px-6">
@@ -155,11 +231,11 @@ export default function WalletPage() {
         </div>
       )}
 
-      {/* Packages */}
+      {/* ====== Top-Up Koin ====== */}
       <section className="mt-10">
         <h2 className="font-display text-xl font-bold text-surface-50">Top-Up Koin</h2>
         <p className="mt-1 text-sm text-surface-400">
-          Pembelian koin memerlukan pembayaran melalui payment gateway yang tersedia.
+          Pilih paket koin yang ingin dibeli. Pembayaran diproses instan.
         </p>
 
         {loading && !packages.length ? (
@@ -191,10 +267,19 @@ export default function WalletPage() {
                 <p className="mt-1 text-sm text-surface-400">{pkg.name}</p>
                 <p className="mt-4 text-lg font-semibold text-surface-200">{formatRupiah(pkg.price)}</p>
                 <button
-                  disabled
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-surface-500 bg-surface-800 cursor-not-allowed"
+                  onClick={() => handlePurchase(pkg)}
+                  disabled={purchasingId === pkg.id}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <Lock size={15} /> Segera Hadir
+                  {purchasingId === pkg.id ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" /> Memproses…
+                    </>
+                  ) : (
+                    <>
+                      <Coins size={15} /> Beli Sekarang
+                    </>
+                  )}
                 </button>
               </div>
             ))}
@@ -202,7 +287,122 @@ export default function WalletPage() {
         )}
       </section>
 
-      {/* Transactions */}
+      {/* ====== Transfer dari Affiliate (Creator Only) ====== */}
+      {user.role === 'creator' && (
+        <section className="mt-10">
+          <h2 className="font-display text-xl font-bold text-surface-50">Top-Up dari Saldo Affiliate</h2>
+          <p className="mt-1 text-sm text-surface-400">
+            Gunakan penghasilan affiliate Anda untuk membeli koin. 1 koin = Rp 100.
+          </p>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-5">
+            {/* Form transfer */}
+            <div className="lg:col-span-3">
+              <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6">
+                <h3 className="flex items-center gap-2 font-display text-base font-bold text-surface-50">
+                  <Landmark size={17} className="text-emerald-300" /> Transfer ke Dompet Koin
+                </h3>
+                <p className="mt-1 text-sm text-surface-400">
+                  Saldo affiliate akan dikonversi menjadi koin (Rp 100 = 1 koin).
+                </p>
+
+                <form onSubmit={handleTransferFromAffiliate} className="mt-5 space-y-4">
+                  <div>
+                    <label htmlFor="transfer-amount" className="mb-1.5 block text-sm font-medium text-surface-200">
+                      Nominal Transfer (Rp)
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-surface-500">Rp</span>
+                      <input
+                        id="transfer-amount"
+                        type="text"
+                        inputMode="numeric"
+                        value={transferAmount ? transferAmountNumber.toLocaleString('id-ID') : ''}
+                        onChange={(e) => {
+                          setTransferAmount(e.target.value.replace(/[^\d]/g, ''))
+                          setTransferError('')
+                        }}
+                        placeholder="0"
+                        className="w-full rounded-xl border border-surface-800 bg-surface-950 py-3 pl-10 pr-4 text-sm font-semibold text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-surface-500">
+                      Saldo affiliate tersedia:{' '}
+                      <span className="font-semibold text-emerald-300">
+                        {formatRupiah(affiliateSummary?.available ?? 0)}
+                      </span>
+                    </p>
+                    {transferCoins > 0 && (
+                      <p className="mt-1 text-xs text-amber-300">
+                        = {transferCoins.toLocaleString('id-ID')} koin
+                      </p>
+                    )}
+                  </div>
+
+                  {transferError && (
+                    <p className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-2.5 text-sm text-red-300">
+                      <AlertCircle size={15} /> {transferError}
+                    </p>
+                  )}
+
+                  {transferNotice && (
+                    <p className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm text-emerald-300">
+                      <CheckCircle2 size={15} /> {transferNotice}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={transferLoading || transferAmountNumber <= 0}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-8"
+                  >
+                    {transferLoading ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Banknote size={16} />
+                    )}
+                    {transferLoading ? 'Memproses…' : 'Transfer ke Dompet'}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="lg:col-span-2">
+              <div className="flex h-full flex-col gap-4">
+                <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-5 text-sm text-surface-300">
+                  <h4 className="flex items-center gap-2 font-display text-base font-bold text-emerald-200">
+                    <CheckCircle2 size={17} /> Cara Kerja
+                  </h4>
+                  <ul className="mt-3 space-y-2.5 text-sm">
+                    <li className="flex gap-2">
+                      <span className="text-emerald-300">1.</span>
+                      Penghasilan affiliate Anda dari unlock episode premium.
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-emerald-300">2.</span>
+                      Transfer ke dompet koin → saldo affiliate berkurang.
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-emerald-300">3.</span>
+                      Koin bertambah → bisa dipakai untuk unlock episode premium.
+                    </li>
+                  </ul>
+                </div>
+                <div className="flex items-start gap-3 rounded-2xl border border-surface-800 bg-surface-900/60 p-5 text-xs text-surface-400">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0 text-surface-500" />
+                  <p>
+                    Minimal transfer <span className="font-medium text-surface-300">Rp 100</span> (1 koin).
+                    Nominal akan dibulatkan ke kelipatan Rp 100.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ====== Riwayat Transaksi ====== */}
       <section className="mt-12">
         <h2 className="font-display text-xl font-bold text-surface-50">Riwayat Transaksi</h2>
         <div className="mt-4 overflow-hidden rounded-2xl border border-surface-800 bg-surface-900">
@@ -269,19 +469,6 @@ export default function WalletPage() {
           )}
         </div>
         {!loading && transactions.length > 0 && <Pagination meta={txMeta} onPageChange={setPage} />}
-      </section>
-
-      {/* Info kecil */}
-      <section className="mt-10 flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 text-sm text-surface-400">
-        <Lock size={18} className="mt-0.5 shrink-0 text-amber-400" />
-        <div>
-          <p className="font-semibold text-amber-300">Pembayaran Belum Tersedia</p>
-          <p className="mt-1">
-            Sistem pembayaran real-time sedang dalam pengembangan. Untuk saat ini,
-            top-up koin belum dapat dilakukan. Episode premium dapat diakses setelah
-            sistem pembayaran terintegrasi.
-          </p>
-        </div>
       </section>
     </div>
   )

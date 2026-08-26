@@ -25,15 +25,10 @@ class User extends Authenticatable implements MustVerifyEmail
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
-     */
-    protected $fillable = [
-        'name',
-        'username',
-        'email',
-        'password',
-        'role',
-        'avatar_url',
-        'coin_balance',
+     */    protected $fillable = [
+        'name', 'username', 'email', 'password', 'role',
+        'avatar_url', 'coin_balance', 'is_premium', 'premium_until',
+        'is_vvip', 'vvip_until',
     ];
 
     /**
@@ -54,6 +49,10 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
         'email_verification_code_expires_at' => 'datetime',
+        'premium_until' => 'datetime',
+        'is_premium' => 'boolean',
+        'is_vvip' => 'boolean',
+        'vvip_until' => 'datetime',
         'password' => 'hashed',
     ];
 
@@ -65,6 +64,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isCreator(): bool
     {
         return $this->role === self::ROLE_CREATOR;
+    }
+
+    public function isPremium(): bool
+    {
+        return $this->is_premium && $this->premium_until && $this->premium_until->isFuture();
+    }
+
+    public function isVvip(): bool
+    {
+        return $this->is_vvip && $this->vvip_until && $this->vvip_until->isFuture();
     }
 
     public function creatorProfile(): HasOne
@@ -175,5 +184,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function pushSubscriptions(): HasMany
     {
         return $this->hasMany(PushSubscription::class);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
     }
 }

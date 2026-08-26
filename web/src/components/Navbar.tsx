@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
-  Banknote,
   BookOpen,
   ChevronDown,
   Coins,
+  Crown,
+  Gem,
   HelpCircle,
   Library,
   LogOut,
@@ -12,8 +13,8 @@ import {
   MessageCircle,
   Palette,
   Search,
+  Banknote,
   Shield,
-  Sparkles,
   Trophy,
   User,
   Wallet,
@@ -142,9 +143,15 @@ export default function Navbar() {
               <NotificationBell />
               <button
                 onClick={() => setMenuOpen((v) => !v)}
-                className="flex items-center gap-1.5 rounded-full border border-surface-800 bg-surface-900 py-1 pl-1 pr-2 sm:pr-3 transition-colors hover:border-brand-500/50"
+                className={`flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2 sm:pr-3 transition-colors ${
+                  user.is_vvip
+                    ? 'border-purple-500/50 bg-purple-900/30 hover:border-purple-400/70'
+                    : 'border-surface-800 bg-surface-900 hover:border-brand-500/50'
+                }`}
               >
-                <Avatar name={user.name} avatarUrl={user.avatar_url} size={32} className="rounded-full" />
+                <div className={user.is_vvip ? 'avatar-vvip-glow' : ''}>
+                  <Avatar name={user.name} avatarUrl={user.avatar_url} size={32} className="rounded-full" />
+                </div>
                 <span className="hidden max-w-24 truncate text-sm font-medium text-surface-100 md:block">
                   {user.name.split(' ')[0]}
                 </span>
@@ -154,7 +161,19 @@ export default function Navbar() {
               {menuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/50">
                   <div className="border-b border-surface-800 px-4 py-3">
-                    <p className="truncate text-sm font-semibold text-surface-100">{user.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-surface-100">{user.name}</p>
+                      {user.is_vvip && (
+                        <span className="badge-vvip inline-flex items-center gap-0.5 rounded-full border border-purple-500/50 bg-gradient-to-r from-purple-600/20 via-pink-500/20 to-purple-600/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-200 shadow-sm shadow-purple-500/20">
+                          <Gem size={9} className="animate-pulse" /> VVIP
+                        </span>
+                      )}
+                      {!user.is_vvip && user.is_premium && (
+                        <span className="badge-premium inline-flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-orange-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                          <Crown size={9} /> Premium
+                        </span>
+                      )}
+                    </div>
                     <p className="truncate text-xs text-surface-400">@{user.username}</p>
                   </div>
                   <Link
@@ -170,6 +189,19 @@ export default function Navbar() {
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-300 transition-colors hover:bg-surface-800 hover:text-amber-200"
                   >
                     <Wallet size={15} /> Dompet ({((user.coin_balance || 0) ?? 0).toLocaleString('id-ID')} koin)
+                  </Link>
+                  <Link
+                    to="/premium"
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors hover:bg-surface-800 ${
+                      user.is_vvip
+                        ? 'text-purple-400 hover:text-purple-300'
+                        : user.is_premium
+                          ? 'text-amber-400 hover:text-amber-300'
+                          : 'text-surface-300 hover:text-surface-50'
+                    }`}
+                  >
+                    {user.is_vvip ? <Gem size={15} /> : <Crown size={15} />} {user.is_vvip ? 'VVIP ✨' : user.is_premium ? 'Premium ✨' : 'Upgrade Premium'}
                   </Link>
                   <Link
                     to="/gamification"
@@ -200,13 +232,6 @@ export default function Navbar() {
                         className="flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-300 transition-colors hover:bg-surface-800 hover:text-emerald-200"
                       >
                         <Banknote size={15} /> Penghasilan & Penarikan
-                      </Link>
-                      <Link
-                        to="/creator/ai"
-                        onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-violet-300 transition-colors hover:bg-surface-800 hover:text-violet-200"
-                      >
-                        <Sparkles size={15} /> Asisten AI
                       </Link>
                     </>
                   )}
@@ -339,11 +364,11 @@ export default function Navbar() {
                       <Palette size={16} /> Dashboard Creator
                     </NavLink>
                     <NavLink
-                      to="/creator/ai"
+                      to="/creator/earnings"
                       onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-violet-300 transition-colors hover:bg-surface-800/60 hover:text-violet-200"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-emerald-300 transition-colors hover:bg-surface-800/60 hover:text-emerald-200"
                     >
-                      <Sparkles size={16} /> Asisten AI
+                      <Banknote size={16} /> Penghasilan & Penarikan
                     </NavLink>
                   </>
                 )}
