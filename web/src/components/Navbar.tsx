@@ -153,7 +153,7 @@ export default function Navbar() {
                   <Avatar name={user.name} avatarUrl={user.avatar_url} size={32} className="rounded-full" />
                 </div>
                 <span className="hidden max-w-24 truncate text-sm font-medium text-surface-100 md:block">
-                  {user.name.split(' ')[0]}
+                  {(user.name ?? '').split(' ')[0] || 'User'}
                 </span>
                 <ChevronDown size={14} className="hidden text-surface-400 sm:block" />
               </button>

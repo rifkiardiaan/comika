@@ -231,7 +231,7 @@ export interface Comment {
   comic_id: number
   episode_id: number | null
   parent_id: number | null
-  user: { id: number; name: string; username: string | null; avatar_url: string | null }
+  user: { id: number; name: string; username: string | null; avatar_url: string | null; is_vvip?: boolean }
   content: string
   like_count: number
   created_at: string

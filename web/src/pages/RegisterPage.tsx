@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Mail, Lock, User as UserIcon, UserPlus, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User as UserIcon, UserPlus, Loader2 } from 'lucide-react'
 import { auth } from '../services/auth'
 
 interface FieldError {
@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<FieldError>({})
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loggedIn, setLoggedIn] = useState(() => !!auth.getStoredUser())
   const navigate = useNavigate()
@@ -128,12 +129,20 @@ export default function RegisterPage() {
             <div className="relative">
               <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-surface-500" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimal 8 karakter"
-                className={inputClass('password')}
+                className={`${inputClass('password')} !pr-11`}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 transition-colors hover:text-surface-300"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
             {fieldErrors.password && (
               <p className="mt-1 text-xs text-red-400">{fieldErrors.password[0]}</p>
@@ -145,12 +154,20 @@ export default function RegisterPage() {
             <div className="relative">
               <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-surface-500" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={passwordConfirmation}
                 onChange={(e) => setPasswordConfirmation(e.target.value)}
                 placeholder="Ulangi password"
-                className={inputClass('password')}
+                className={`${inputClass('password')} !pr-11`}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 transition-colors hover:text-surface-300"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 

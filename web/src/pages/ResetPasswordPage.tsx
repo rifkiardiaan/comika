@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { KeyRound, Loader2, Lock, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Loader2, Lock, ShieldCheck } from 'lucide-react'
 import { auth } from '../services/auth'
 
 interface FieldError {
@@ -17,6 +17,7 @@ export default function ResetPasswordPage() {
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<FieldError>({})
+  const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
@@ -85,16 +86,24 @@ export default function ResetPasswordPage() {
               <div className="relative">
                 <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-surface-500" />
                 <input
-                  type="password"
+                  type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimal 8 karakter"
-                  className={`w-full rounded-xl border bg-surface-950 py-3 pl-10 pr-4 text-sm text-surface-100 placeholder:text-surface-500 focus:outline-none focus:ring-2 ${
+                  className={`w-full rounded-xl border bg-surface-950 py-3 pl-10 pr-11 text-sm text-surface-100 placeholder:text-surface-500 focus:outline-none focus:ring-2 ${
                     fieldErrors.password
                       ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                       : 'border-surface-700 focus:border-brand-500 focus:ring-brand-500/30'
                   }`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 transition-colors hover:text-surface-300"
+                  tabIndex={-1}
+                >
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
               {fieldErrors.password && <p className="mt-1 text-xs text-red-400">{fieldErrors.password[0]}</p>}
             </div>
@@ -104,12 +113,20 @@ export default function ResetPasswordPage() {
               <div className="relative">
                 <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-surface-500" />
                 <input
-                  type="password"
+                  type={showPw ? 'text' : 'password'}
                   value={passwordConfirmation}
                   onChange={(e) => setPasswordConfirmation(e.target.value)}
                   placeholder="Ulangi password baru"
-                  className="w-full rounded-xl border border-surface-700 bg-surface-950 py-3 pl-10 pr-4 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                  className="w-full rounded-xl border border-surface-700 bg-surface-950 py-3 pl-10 pr-11 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 transition-colors hover:text-surface-300"
+                  tabIndex={-1}
+                >
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 

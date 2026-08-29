@@ -14,7 +14,10 @@ export const content = {
       '/comics',
       { params },
     )
-    return data
+    return {
+      data: data.data ?? [],
+      meta: data.meta ?? { current_page: 1, last_page: 1, total: 0 },
+    }
   },
 
   /** Detail komik + episode + user_actions (saat login). */
@@ -26,7 +29,7 @@ export const content = {
   /** Daftar episode komik (menyertakan is_locked/is_unlocked saat login). */
   async episodes(comicId: number | string): Promise<Episode[]> {
     const { data } = await api.get<{ data: Episode[] }>(`/comics/${comicId}/episodes`)
-    return data.data
+    return data.data ?? []
   },
 
   /** Detail episode + halaman + navigasi prev/next. */
@@ -44,7 +47,7 @@ export const content = {
   /** Daftar genre — publik. */
   async genres(): Promise<Genre[]> {
     const { data } = await api.get<{ data: Genre[] }>('/genres')
-    return data.data
+    return data.data ?? []
   },
 
   // ============ Creator: Comic CRUD ============

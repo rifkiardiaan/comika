@@ -114,6 +114,14 @@ class SubscriptionController extends Controller
         $days = in_array($plan, [Subscription::PLAN_MONTHLY, Subscription::PLAN_VVIP_MONTHLY]) ? 30 : 365;
         $isVvipPlan = in_array($plan, [Subscription::PLAN_VVIP_MONTHLY, Subscription::PLAN_VVIP_YEARLY]);
 
+        // VVIP users cannot subscribe to premium plans (downgrade not allowed)
+        if (! $isVvipPlan && $user->is_vvip && $user->vvip_until && $user->vvip_until->isFuture()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun VVIP tidak dapat membeli langganan Premium. Kamu sudah memiliki akses VVIP yang lebih unggul.',
+            ], 403);
+        }
+
         // Check if user already has active subscription for same tier
         $existing = Subscription::where('user_id', $user->id)
             ->where('payment_status', Subscription::STATUS_PAID)

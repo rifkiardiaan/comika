@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom'
-import { CheckCircle2, LogIn, Mail, Lock, Loader2 } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, LogIn, Mail, Lock, Loader2 } from 'lucide-react'
 import { auth } from '../services/auth'
 
 interface FieldError {
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<FieldError>({})
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [loggedIn, setLoggedIn] = useState(() => !!auth.getStoredUser())
   const navigate = useNavigate()
   const location = useLocation()
@@ -95,12 +96,20 @@ export default function LoginPage() {
             <div className="relative">
               <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-surface-500" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-surface-700 bg-surface-950 py-3 pl-10 pr-4 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                className="w-full rounded-xl border border-surface-700 bg-surface-950 py-3 pl-10 pr-11 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 transition-colors hover:text-surface-300"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
             <div className="mt-1.5 text-right">
               <Link to="/forgot-password" className="text-xs font-medium text-brand-300 hover:text-brand-200">

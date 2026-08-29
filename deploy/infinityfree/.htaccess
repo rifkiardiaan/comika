@@ -1,9 +1,9 @@
-# ======================================================================
+# =====================================================================
 # COMIKA — Root .htaccess (InfinityFree shared hosting)
 # Document root: public_html/
 # Backend Laravel di subfolder: app/
 # Frontend React di root (index.html + assets/)
-# ======================================================================
+# =====================================================================
 
 <IfModule mod_rewrite.c>
     Options -MultiViews -Indexes
@@ -17,7 +17,9 @@
     # ---------------------------------------------------------------
     # API routes → Laravel backend (app/public/index.php)
     # Semua request /api/* diteruskan ke Laravel
+    # Penting: gunakan THE_REQUEST agar REQUEST_URI tetap utuh
     # ---------------------------------------------------------------
+    RewriteCond %{THE_REQUEST} \s/api/ [NC]
     RewriteRule ^api/(.*)$ app/public/index.php [L,QSA]
 
     # ---------------------------------------------------------------

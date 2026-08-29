@@ -3,25 +3,21 @@ import { Link, useParams } from 'react-router-dom'
 import {
   AlertCircle,
   ArrowLeft,
-  BadgeCheck,
   BookOpen,
   Calendar,
-  Coins,
   Crown,
-  Eye,
   Gem,
   Heart,
   Loader2,
   MessageCircle,
   Star,
-  Users,
 } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import api from '../services/api'
 import { auth } from '../services/auth'
 import { getApiErrorMessage } from '../utils/errors'
 import { formatDate, formatNumber } from '../utils/format'
-import type { User } from '../types'
+
 
 interface PublicUserProfile {
   id: number

@@ -54,7 +54,10 @@ const comicDefs: Array<{ key: string; title: string; synopsis: string; genreIds:
 // Key cover per komik (disimpan per definisi, bukan dari slug berbahasa Indonesia)
 const coverKeys = comicDefs.map((c) => c.key)
 
-export const coverKeyOf = (comicId: number): string => coverKeys[comicId - 1] ?? 'star'
+export const coverKeyOf = (comicId: number | undefined | null): string => {
+  if (comicId == null || comicId < 1) return 'star'
+  return coverKeys[comicId - 1] ?? 'star'
+}
 
 export const mockComics: Comic[] = comicDefs.map((c, i) => ({
   id: i + 1,

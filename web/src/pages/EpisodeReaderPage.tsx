@@ -5,12 +5,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Coins,
-  Gem,
   Home,
   List,
   Loader2,
   Lock,
-  LogIn,
   Wallet,
 } from 'lucide-react'
 import { content } from '../services/content'

@@ -24,6 +24,7 @@ class CommentResource extends JsonResource
                 'name' => $this->whenLoaded('user', fn () => $this->user->name, null),
                 'username' => $this->whenLoaded('user', fn () => $this->user->username, null),
                 'avatar_url' => $this->whenLoaded('user', fn () => $this->user->avatar_url, null),
+                'is_vvip' => $this->whenLoaded('user', fn () => $this->user->is_vvip, false),
             ],
             'created_at' => $this->created_at?->toIso8601String(),
             'replies' => CommentResource::collection($this->whenLoaded('replies')),

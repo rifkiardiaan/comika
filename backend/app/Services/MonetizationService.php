@@ -355,29 +355,33 @@ class MonetizationService
 
     /**
      * Tandai earning pending sebagai paid (FIFO) hingga nominal terpenuhi.
+     *
+     * Hanya earning yang totalnya cukup untuk menutupi $amount yang ditandai paid.
+     * Sisa earning tetap pending sehingga saldo affiliate tidak hilang seluruhnya.
      */
     public function markEarningsPaid(int $creatorId, float $amount): void
     {
         $remaining = $amount;
 
-        CreatorEarning::query()
+        // Gunakan foreach + break (bukan Collection::each) karena
+        // each() TIDAK berhenti saat callback return false.
+        $earnings = CreatorEarning::query()
             ->where('creator_id', $creatorId)
             ->where('status', CreatorEarning::STATUS_PENDING)
             ->orderBy('id')
-            ->get()
-            ->each(function (CreatorEarning $earning) use (&$remaining) {
-                if ($remaining <= 0) {
-                    return false;
-                }
+            ->get();
 
-                $earning->update([
-                    'status' => CreatorEarning::STATUS_PAID,
-                    'paid_at' => now(),
-                ]);
-                $remaining -= (float) $earning->amount;
+        foreach ($earnings as $earning) {
+            if ($remaining <= 0) {
+                break;
+            }
 
-                return true;
-            });
+            $earning->update([
+                'status' => CreatorEarning::STATUS_PAID,
+                'paid_at' => now(),
+            ]);
+            $remaining -= (float) $earning->amount;
+        }
     }
 
     /**

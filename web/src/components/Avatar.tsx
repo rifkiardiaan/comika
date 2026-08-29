@@ -37,7 +37,7 @@ export default function Avatar({ name, avatarUrl, size = 32, className = '' }: P
       className={`flex shrink-0 items-center justify-center bg-gradient-to-br from-brand-500 to-pink-500 font-bold text-white ${className}`}
       style={{ width: size, height: size, borderRadius, fontSize: Math.round(size * 0.4) }}
     >
-      {name[0]?.toUpperCase() ?? 'C'}
+      {(name ?? '')[0]?.toUpperCase() ?? 'C'}
     </span>
   )
 }

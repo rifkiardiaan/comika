@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, Heart, Star } from 'lucide-react'
 import Avatar from './Avatar'
@@ -13,6 +14,7 @@ interface Props {
 export default function ComicCard({ comic, compact = false }: Props) {
   const navigate = useNavigate()
   const key = coverKeyOf(comic.id)
+  const [imgError, setImgError] = useState(false)
   return (
     <div
       role="link"
@@ -32,12 +34,13 @@ export default function ComicCard({ comic, compact = false }: Props) {
           className="relative flex aspect-[3/4] items-center justify-center overflow-hidden"
           style={{ background: coverStyle(key) }}
         >
-          {comic.cover_url ? (
+          {comic.cover_url && !imgError ? (
             <img
               src={comic.cover_url}
               alt={comic.title}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
               loading="lazy"
+              onError={() => setImgError(true)}
             />
           ) : (
             <span className="text-5xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110">
@@ -67,20 +70,20 @@ export default function ComicCard({ comic, compact = false }: Props) {
           <h3 className="line-clamp-1 text-sm font-semibold text-surface-50 transition-colors group-hover:text-brand-300">
             {comic.title}
           </h3>
-          {!compact && (
+          {!compact && comic.creator && (
             <>
               <p className="flex items-center gap-1.5 text-xs text-surface-400">
-                <Avatar name={comic.creator.name} avatarUrl={comic.creator.avatar_url} size={16} className="rounded-full" />
+                <Avatar name={comic.creator.name ?? 'Creator'} avatarUrl={comic.creator.avatar_url} size={16} className="rounded-full" />
                 <Link
                   to={`/creators/${comic.creator.id}`}
                   onClick={(e) => e.stopPropagation()}
                   className="line-clamp-1 transition-colors hover:text-brand-300"
                 >
-                  {comic.creator.name}
+                  {comic.creator.name ?? 'Creator'}
                 </Link>
               </p>
               <div className="flex flex-wrap gap-1 pt-0.5">
-                {comic.genres.slice(0, 2).map((gen) => (
+                {(comic.genres ?? []).slice(0, 2).map((gen) => (
                   <span
                     key={gen.id}
                     className="rounded-full bg-surface-800 px-2 py-0.5 text-[10px] text-surface-300"

@@ -136,6 +136,9 @@ export default function PremiumPage() {
                   {status?.days_remaining !== undefined && ` · ${status.days_remaining} hari lagi`}
                   {status?.expires_at && ` (sampai ${new Date(status.expires_at).toLocaleDateString('id-ID')})`}
                 </p>
+                <p className="mt-2 text-xs text-purple-400/80">
+                  Akun VVIP tidak dapat membeli langganan Premium karena sudah memiliki akses lebih lengkap.
+                </p>
               </div>
             </div>
           </div>
@@ -174,6 +177,7 @@ export default function PremiumPage() {
               }`}
             >
               <Crown size={16} /> Premium
+              {isCurrentlyVvip && <span className="ml-1 text-[10px] opacity-70">🔒</span>}
             </button>
             <button
               onClick={() => setActiveTab('vvip')}
@@ -290,41 +294,65 @@ export default function PremiumPage() {
               {success}
             </div>
           )}
-          <div className="mt-8 flex justify-center">
-            <button
-              onClick={() => handleSubscribe(selectedPlan)}
-              disabled={subscribing || loading || (activeTab === 'vvip' ? isCurrentlyVvip : isCurrentlyPremium)}
-              className={`flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${
-                activeTab === 'vvip'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-600/25'
-                  : 'bg-gradient-to-r from-brand-600 to-pink-600 shadow-brand-600/25'
-              }`}
-            >
-              {subscribing ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : activeTab === 'vvip' ? (
-                <Gem size={16} />
-              ) : (
-                <Crown size={16} />
-              )}
-              {subscribing
-                ? 'Memproses…'
-                : activeTab === 'vvip'
-                  ? isCurrentlyVvip
-                    ? 'Sudah VVIP'
-                    : 'Langganan VVIP Sekarang'
-                  : isCurrentlyPremium
-                    ? 'Sudah Premium'
-                    : 'Langganan Sekarang'}
-            </button>
-          </div>
+
+          {/* Blocked message for VVIP on Premium tab */}
+          {isCurrentlyVvip && activeTab === 'premium' && (
+            <div className="mt-6 rounded-2xl border border-purple-500/30 bg-purple-500/10 p-6 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/20">
+                <Gem size={28} className="text-purple-400" />
+              </div>
+              <p className="text-sm font-bold text-purple-300">Akun VVIP tidak dapat membeli Premium</p>
+              <p className="mt-1 text-xs text-surface-400">
+                Kamu sudah memiliki VVIP yang mencakup semua fitur Premium dan lebih banyak lagi.
+              </p>
+              <button
+                onClick={() => setActiveTab('vvip')}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-600/25 transition-all hover:brightness-110"
+              >
+                <Gem size={14} /> Lihat Paket VVIP
+              </button>
+            </div>
+          )}
+
+          {/* Normal subscribe button */}
+          {!(isCurrentlyVvip && activeTab === 'premium') && (
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={() => handleSubscribe(selectedPlan)}
+                disabled={subscribing || loading || (activeTab === 'vvip' ? isCurrentlyVvip : isCurrentlyPremium)}
+                className={`flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  activeTab === 'vvip'
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-600/25'
+                    : 'bg-gradient-to-r from-brand-600 to-pink-600 shadow-brand-600/25'
+                }`}
+              >
+                {subscribing ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : activeTab === 'vvip' ? (
+                  <Gem size={16} />
+                ) : (
+                  <Crown size={16} />
+                )}
+                {subscribing
+                  ? 'Memproses…'
+                  : activeTab === 'vvip'
+                    ? isCurrentlyVvip
+                      ? 'Sudah VVIP'
+                      : 'Langganan VVIP Sekarang'
+                    : isCurrentlyPremium
+                      ? 'Sudah Premium'
+                      : 'Langganan Sekarang'}
+              </button>
+            </div>
+          )}
           {!user && (
             <p className="mt-4 text-center text-xs text-surface-500">
               <Link to="/login" className="text-brand-400 hover:text-brand-300">Masuk</Link> atau{' '}
               <Link to="/register" className="text-brand-400 hover:text-brand-300">daftar</Link> terlebih dahulu untuk berlangganan.
             </p>
           )}
-          {(status?.is_premium || status?.is_vvip) && (
+          {/* Cancel button: only for premium (not VVIP, since VVIP can't buy premium anyway) */}
+          {isCurrentlyPremium && (
             <div className="mt-4 text-center">
               <button
                 onClick={handleCancel}

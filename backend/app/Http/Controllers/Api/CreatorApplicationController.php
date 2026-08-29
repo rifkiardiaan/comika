@@ -41,15 +41,15 @@ class CreatorApplicationController extends Controller
             ], 422);
         }
 
-        // Validasi: sudah pernah submit dalam 3 hari terakhir?
-        $recent = CreatorApplication::where('user_id', $user->id)
-            ->whereIn('status', [CreatorApplication::STATUS_APPROVED, CreatorApplication::STATUS_REJECTED])
+        // Validasi: sudah pernah disetujui dalam 1 hari terakhir? (tolak boleh submit ulang langsung)
+        $recentApproved = CreatorApplication::where('user_id', $user->id)
+            ->where('status', CreatorApplication::STATUS_APPROVED)
             ->where('created_at', '>=', now()->subDays(1))
             ->latest()
             ->first();
 
-        if ($recent) {
-            $daysLeft = ceil($recent->created_at->addDays(1)->diffInHours(now()) / 24);
+        if ($recentApproved) {
+            $daysLeft = ceil($recentApproved->created_at->addDays(1)->diffInHours(now()) / 24);
             return response()->json([
                 'success' => false,
                 'message' => "Kamu sudah mengajukan baru-baru ini. Coba lagi dalam {$daysLeft} hari.",

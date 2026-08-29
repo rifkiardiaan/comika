@@ -28,6 +28,7 @@ export default function AdminComicsPage() {
   const [notice, setNotice] = useState('')
   const [busyId, setBusyId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminComic | null>(null)
+  const [coverErrors, setCoverErrors] = useState<Set<number>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [coverBusyId, setCoverBusyId] = useState<number | null>(null)
 
@@ -204,12 +205,13 @@ export default function AdminComicsPage() {
                   <tr key={c.id} className="transition-colors hover:bg-surface-800/30">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        {c.cover_url ? (
+                        {c.cover_url && !coverErrors.has(c.id) ? (
                           <div className="group/cover relative">
                             <img
                               src={c.cover_url}
                               alt={c.title}
                               className="h-12 w-9 shrink-0 rounded-lg object-cover"
+                              onError={() => setCoverErrors((prev) => new Set(prev).add(c.id))}
                             />
                             <button
                               onClick={() => deleteCover(c)}

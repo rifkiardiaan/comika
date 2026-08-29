@@ -56,6 +56,7 @@ export default function ComicDetailPage() {
   const [replyText, setReplyText] = useState('')
   const [replyBusy, setReplyBusy] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null)
+  const [coverImgError, setCoverImgError] = useState(false)
   const [commentPage, setCommentPage] = useState(1)
   const [hasMoreComments, setHasMoreComments] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -271,8 +272,8 @@ export default function ComicDetailPage() {
                 className="flex aspect-[3/4] items-center justify-center rounded-xl border border-white/10"
                 style={{ background: coverStyle(coverKeyOf(comic.id)) }}
               >
-                {comic.cover_url ? (
-                  <img src={comic.cover_url} alt={comic.title} className="h-full w-full rounded-xl object-cover" />
+                {comic.cover_url && !coverImgError ? (
+                  <img src={comic.cover_url} alt={comic.title} className="h-full w-full rounded-xl object-cover" onError={() => setCoverImgError(true)} />
                 ) : (
                   <span className="text-3xl">{coverEmoji(coverKeyOf(comic.id))}</span>
                 )}
@@ -297,6 +298,16 @@ export default function ComicDetailPage() {
 
   return (
     <div className="animate-fade-in">
+      {/* Creator back button — floating, responsive */}
+      {user?.id === comic.creator.id && (
+        <Link
+          to={`/creator/comics/${comic.id}`}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-2xl border border-surface-700 bg-surface-900/95 px-4 py-3 text-sm font-medium text-surface-300 shadow-xl shadow-black/40 backdrop-blur-sm transition-all hover:border-brand-500/50 hover:text-surface-100 sm:left-4 sm:bottom-auto sm:top-20 sm:rounded-xl sm:px-4 sm:py-2.5"
+        >
+          <ArrowLeft size={18} />
+          <span className="hidden sm:inline">Kembali ke Kelola</span>
+        </Link>
+      )}
       {/* Header */}
       <section className="relative overflow-hidden border-b border-surface-800/70">
         <div
@@ -312,12 +323,13 @@ export default function ComicDetailPage() {
               className="relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50"
               style={{ background: coverStyle(coverKeyOf(comic.id)) }}
             >
-              {comic.cover_url ? (
+              {comic.cover_url && !coverImgError ? (
                 <img
                   src={comic.cover_url}
                   alt={comic.title}
                   className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
+                  onError={() => setCoverImgError(true)}
                 />
               ) : (
                 <span className="text-6xl drop-shadow-xl">{coverEmoji(coverKeyOf(comic.id))}</span>
@@ -584,11 +596,10 @@ export default function ComicDetailPage() {
           
           {/* Other Episodes Grid */}
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {episodes.slice(episodes[0]?.is_premium ? 0 : 1).map((ep, index) => {
+            {episodes.slice(episodes[0]?.is_premium ? 0 : 1).map((ep) => {
               const isVvipUser = user?.is_vvip === true
               const locked = ep.is_locked === true && !isVvipUser
               const hasThumbnail = ep.thumbnail_url && ep.thumbnail_url.length > 0
-              const isFirstFree = index === 0 && !ep.is_premium && episodes[0] === ep
               return (
                 <Link
                   key={ep.id}
@@ -747,20 +758,31 @@ export default function ComicDetailPage() {
                 )}
               </button>
             )}
-            {comments.map((comment) => (
-              <div key={comment.id} className="rounded-xl border border-surface-800 bg-surface-900 p-4">
+            {comments.map((comment) => {
+              const isVvipComment = comment.user.is_vvip === true
+              return (
+              <div key={comment.id} className={`rounded-xl border p-4 ${isVvipComment ? 'comment-vvip-elite border-purple-500/30' : 'border-surface-800 bg-surface-900'}`}>
                 <div className="flex min-w-0 items-center gap-3">
                   <Link to={`/user/${comment.user.id}`} className="shrink-0">
-                    <Avatar name={comment.user.name} avatarUrl={comment.user.avatar_url} size={32} className="rounded-full transition-opacity hover:opacity-80" />
+                    <div className={isVvipComment ? 'avatar-vvip-comment' : ''}>
+                      <Avatar name={comment.user.name} avatarUrl={comment.user.avatar_url} size={32} className={`rounded-full transition-opacity hover:opacity-80 ${isVvipComment ? 'shadow-lg shadow-purple-500/30' : ''}`} />
+                    </div>
                   </Link>
                   <div className="min-w-0">
-                    <Link to={`/user/${comment.user.id}`} className="truncate text-sm font-semibold text-surface-100 hover:text-brand-300 transition-colors">
-                      {comment.user.name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link to={`/user/${comment.user.id}`} className={`truncate text-sm font-semibold transition-colors ${isVvipComment ? 'vvip-name-glow hover:opacity-80' : 'text-surface-100 hover:text-brand-300'}`}>
+                        {comment.user.name}
+                      </Link>
+                      {isVvipComment && (
+                        <span className="vvip-comment-badge">
+                          <Gem size={9} /> VVIP
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-surface-400">{timeAgo(comment.created_at)}</p>
                   </div>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-surface-300">{comment.content}</p>
+                <p className={`mt-3 text-sm leading-relaxed ${isVvipComment ? 'text-purple-100/90' : 'text-surface-300'}`}>{comment.content}</p>
                 <div className="mt-3 flex items-center gap-4">
                   <button
                     onClick={() => handleLikeComment(comment.id)}
@@ -884,7 +906,7 @@ export default function ComicDetailPage() {
                   </div>
                 )}
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </section>

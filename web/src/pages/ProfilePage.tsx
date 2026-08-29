@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Coins,
   Crown,
+  Eye,
+  EyeOff,
   Gem,
   Loader2,
   Lock,
@@ -53,6 +55,7 @@ export default function ProfilePage() {
   const [pwSaving, setPwSaving] = useState(false)
   const [pwError, setPwError] = useState('')
   const [pwFieldErrors, setPwFieldErrors] = useState<Record<string, string[]>>({})
+  const [showPw, setShowPw] = useState(false)
 
   // Form profil akun (nama & avatar)
   const [profileName, setProfileName] = useState(() => user?.name ?? '')
@@ -301,18 +304,37 @@ export default function ProfilePage() {
 
       {/* ====== Kartu identitas VVIP ====== */}
       {user.is_vvip ? (
-        <section className="relative overflow-hidden rounded-3xl border border-purple-500/30 vvip-card-glow bg-gradient-to-br from-purple-900/40 via-surface-900 to-pink-900/30 p-8">
+        <section className="vvip-profile-card relative overflow-hidden rounded-3xl border-2 border-purple-500/40 bg-gradient-to-br from-purple-900/60 via-violet-950/80 to-pink-900/40 p-8 shadow-2xl shadow-purple-500/20">
+          {/* Animated gradient border overlay */}
+          <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-r from-purple-500/10 via-transparent to-pink-500/10" />
           {/* Decorative elements */}
-          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-pink-500/15 blur-3xl" />
-          <div className="pointer-events-none absolute left-1/2 top-0 h-px w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+          <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-purple-500/25 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-pink-500/20 blur-3xl" />
+          <div className="pointer-events-none absolute left-1/2 top-0 h-px w-full -translate-x-1/2 bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
+          <div className="pointer-events-none absolute bottom-0 left-1/2 h-px w-full -translate-x-1/2 bg-gradient-to-r from-transparent via-pink-400/40 to-transparent" />
+          
+          {/* VVIP Sparkle Dots — kelap-kelip */}
+          <div className="vvip-profile-sparkle-container">
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+            <div className="vvip-sparkle-dot" />
+          </div>
           
           {/* VVIP Badge Header */}
           <div className="mb-6 flex items-center justify-center">
-            <div className="badge-vvip-gradient flex items-center gap-2 rounded-full px-5 py-2 shadow-xl">
-              <Gem size={16} className="text-white animate-pulse" />
-              <span className="text-sm font-bold text-white tracking-wider uppercase">VVIP Member</span>
-              <Gem size={16} className="text-white animate-pulse" />
+            <div className="badge-vvip-gradient flex items-center gap-3 rounded-full px-8 py-3 shadow-2xl shadow-purple-500/40">
+              <span className="vvip-crown-float text-xl">👑</span>
+              <span className="text-sm font-bold text-white tracking-widest uppercase">VVIP Member</span>
+              <span className="vvip-crown-float text-xl" style={{ animationDelay: '0.5s' }}>💎</span>
             </div>
           </div>
 
@@ -320,7 +342,7 @@ export default function ProfilePage() {
             {/* Avatar with glow */}
             <div className="relative">
               <div className="avatar-vvip-glow">
-                <Avatar name={user.name} avatarUrl={user.avatar_url} size={100} className="shadow-2xl shadow-purple-500/30" />
+                <Avatar name={user.name} avatarUrl={user.avatar_url} size={110} className="shadow-2xl shadow-purple-500/40" />
               </div>
               {user.avatar_url && (
                 <button
@@ -338,22 +360,25 @@ export default function ProfilePage() {
             {/* User info */}
             <div className="flex-1 text-center sm:text-left">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <h2 className="font-display text-3xl font-bold text-surface-50">{user.name}</h2>
+                <h2 className="font-display text-3xl font-bold text-white drop-shadow-lg">{user.name}</h2>
                 <RoleChip role={user.role} />
+                <span className="badge-vvip inline-flex items-center gap-1 rounded-full border border-purple-400/50 bg-gradient-to-r from-purple-600/30 via-pink-500/30 to-purple-600/30 px-3 py-1 text-[11px] font-bold text-purple-100 shadow-sm shadow-purple-500/30">
+                  <Gem size={12} className="animate-pulse" /> VVIP
+                </span>
                 {profile?.is_verified && (
                   <span className="flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-300">
                     <BadgeCheck size={12} /> Terverifikasi
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-sm text-purple-300/80">@{user.username}</p>
+              <p className="mt-1 text-sm font-medium text-purple-200/90">@{user.username}</p>
               
-              <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-surface-400 sm:justify-start">
+              <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-surface-300 sm:justify-start">
                 <span className="flex items-center gap-1.5">
-                  <Mail size={13} /> {user.email}
+                  <Mail size={13} className="text-purple-400" /> {user.email}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Calendar size={13} /> Bergabung {formatDate(user.created_at)}
+                  <Calendar size={13} className="text-purple-400" /> Bergabung {formatDate(user.created_at)}
                 </span>
                 <span className="flex items-center gap-1.5 text-amber-300">
                   <Coins size={13} /> {(user.coin_balance ?? 0).toLocaleString('id-ID')} koin
@@ -362,31 +387,19 @@ export default function ProfilePage() {
 
               {/* VVIP Expiry */}
               {user.vvip_until && (
-                <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2">
-                  <Gem size={14} className="text-purple-400" />
-                  <span className="text-sm text-purple-200">
-                    VVIP aktif sampai <strong>{new Date(user.vvip_until).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                <div className="mt-4 inline-flex items-center gap-2.5 rounded-xl border border-purple-400/40 bg-purple-500/15 px-5 py-2.5 shadow-inner shadow-purple-500/10">
+                  <Gem size={15} className="text-purple-300 animate-pulse" />
+                  <span className="text-sm font-medium text-purple-100">
+                    VVIP aktif sampai <strong className="text-white">{new Date(user.vvip_until).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
                   </span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* VVIP Benefits */}
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { icon: '🎨', label: 'Bebas Iklan', desc: 'Baca tanpa gangguan' },
-              { icon: '📚', label: 'Semua Episode', desc: 'Akses gratis semua eps' },
-              { icon: '💎', label: 'Badge Eksklusif', desc: 'Tanda VVIP kamu' },
-              { icon: '⭐', label: 'Fitur Eksklusif', desc: 'Akses fitur terbaru' },
-            ].map((benefit, i) => (
-              <div key={i} className="rounded-xl border border-purple-500/20 bg-purple-900/20 p-3 text-center transition-all hover:border-purple-500/40 hover:bg-purple-900/30">
-                <span className="text-2xl">{benefit.icon}</span>
-                <p className="mt-1 text-xs font-bold text-purple-200">{benefit.label}</p>
-                <p className="text-[10px] text-purple-300/60">{benefit.desc}</p>
-              </div>
-            ))}
-          </div>
+          {/* Rotating purple ring decoration */}
+          <div className="pointer-events-none absolute -bottom-16 -right-16 h-48 w-48 animate-spin-slow rounded-full border-[3px] border-dashed border-purple-500/30" />
+          <div className="pointer-events-none absolute -top-14 -left-14 h-40 w-40 animate-spin-slow rounded-full border-[2px] border-dashed border-pink-400/25" style={{ animationDirection: 'reverse', animationDuration: '25s' }} />
         </section>
       ) : (
       /* ====== Kartu identitas Regular ====== */
@@ -458,7 +471,7 @@ export default function ProfilePage() {
         {user.role === 'creator' ? (
           <AccountLink to="/creator" icon={<Palette size={18} className="text-pink-300" />} title="Dashboard Creator" desc="Kelola komik & episode" />
         ) : (
-          <AccountLink to="/creator" icon={<Lock size={18} className="text-surface-500" />} title="Jadi Creator" desc="Peran creator diatur admin" />
+          <AccountLink to="/become-creator" icon={<Palette size={18} className="text-pink-300" />} title="Jadi Creator" desc="Ajukan diri jadi creator" />
         )}
       </section>
 
@@ -677,17 +690,27 @@ export default function ProfilePage() {
         >
           <div>
             <label className="mb-1.5 block text-sm font-medium text-surface-200">Password Saat Ini</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="••••••••"
-              className={`w-full rounded-xl border bg-surface-950 px-4 py-3 text-sm text-surface-100 placeholder:text-surface-500 focus:outline-none focus:ring-2 ${
-                pwFieldErrors.current_password
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                  : 'border-surface-800 focus:border-brand-500 focus:ring-brand-500/30'
-              }`}
-            />
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`w-full rounded-xl border bg-surface-950 px-4 py-3 pr-11 text-sm text-surface-100 placeholder:text-surface-500 focus:outline-none focus:ring-2 ${
+                  pwFieldErrors.current_password
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                    : 'border-surface-800 focus:border-brand-500 focus:ring-brand-500/30'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 transition-colors hover:text-surface-300"
+                tabIndex={-1}
+              >
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             {pwFieldErrors.current_password && (
               <p className="mt-1 text-xs text-red-400">{pwFieldErrors.current_password[0]}</p>
             )}
@@ -697,7 +720,7 @@ export default function ProfilePage() {
             <div>
               <label className="mb-1.5 block text-sm font-medium text-surface-200">Password Baru</label>
               <input
-                type="password"
+                type={showPw ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimal 8 karakter"
@@ -707,7 +730,7 @@ export default function ProfilePage() {
             <div>
               <label className="mb-1.5 block text-sm font-medium text-surface-200">Konfirmasi Password Baru</label>
               <input
-                type="password"
+                type={showPw ? 'text' : 'password'}
                 value={newPasswordConfirm}
                 onChange={(e) => setNewPasswordConfirm(e.target.value)}
                 placeholder="Ulangi password baru"

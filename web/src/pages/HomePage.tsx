@@ -36,10 +36,10 @@ export default function HomePage() {
           content.comics({ sort: 'newest', page: 1, per_page: 12 }),
         ])
         if (cancelled) return
-        setTrending(popular.data)
-        setRecommended(rating.data)
-        setAllComics(all.data)
-        setAllLastPage(all.meta.last_page)
+        setTrending(popular.data ?? [])
+        setRecommended(rating.data ?? [])
+        setAllComics(all.data ?? [])
+        setAllLastPage(all.meta?.last_page ?? 1)
       } catch {
         // abaikan — halaman tetap tampil dengan data kosong
       } finally {
@@ -58,9 +58,9 @@ export default function HomePage() {
     try {
       const nextPage = allPage + 1
       const res = await content.comics({ sort: 'newest', page: nextPage, per_page: 12 })
-      setAllComics((prev) => [...prev, ...res.data])
+      setAllComics((prev) => [...prev, ...(res.data ?? [])])
       setAllPage(nextPage)
-      setAllLastPage(res.meta.last_page)
+      setAllLastPage(res.meta?.last_page ?? allLastPage)
     } catch {
       // abaikan
     } finally {
@@ -82,8 +82,8 @@ export default function HomePage() {
     return () => observer.disconnect()
   }, [loadMore])
 
-  const hero = trending[0]
-  const heroLoading = loading && !hero
+  const hero = Array.isArray(trending) && trending.length > 0 ? trending[0] : undefined
+  const heroLoading = loading || !hero
 
   return (
     <div className="animate-fade-in">
@@ -107,8 +107,7 @@ export default function HomePage() {
               </>
             ) : (
               <>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur">
-                  <Flame size={13} className="text-amber-300" /> Sedang Trending
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur">                    <Flame size={13} className="text-amber-300" /> Sedang Trending
                 </span>
                 <h1 className="mt-4 font-display text-2xl font-bold leading-tight text-white sm:text-3xl lg:text-5xl">
                   {hero!.title}
@@ -117,7 +116,7 @@ export default function HomePage() {
                   {hero!.synopsis}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {hero!.genres.map((gen) => (
+                  {(hero!.genres ?? []).map((gen) => (
                     <span key={gen.id} className="rounded-full bg-white/15 px-3 py-1 text-xs text-white backdrop-blur">
                       {gen.name}
                     </span>

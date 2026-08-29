@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import { router } from './routes'
 import { push } from './services/push'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Web push: daftarkan service worker & sinkronkan subscription yang sudah ada
 // (izin sudah diberikan & user sudah login) agar notifikasi tetap berjalan.
@@ -13,6 +14,8 @@ if (localStorage.getItem('comika_token')) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <ErrorBoundary fallbackTitle="COMIKA mengalami kesalahan">
+      <RouterProvider router={router} />
+    </ErrorBoundary>
   </StrictMode>,
 )

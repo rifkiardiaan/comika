@@ -148,26 +148,26 @@ export default function EpisodePagesManager({
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/60">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-800 px-6 py-4">
-          <div>
-            <h3 className="flex items-center gap-2 font-display text-lg font-bold text-surface-50">
-              <FileImage size={18} className="text-sky-300" />
+        <div className="flex items-center justify-between border-b border-surface-800 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="min-w-0 flex-1">
+            <h3 className="flex items-center gap-2 font-display text-base font-bold text-surface-50 sm:text-lg">
+              <FileImage size={18} className="shrink-0 text-sky-300" />
               Kelola Halaman
             </h3>
-            <p className="mt-0.5 text-xs text-surface-400">
+            <p className="mt-0.5 truncate text-xs text-surface-400">
               Episode {episodeNumber} — {episodeTitle}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-50"
+            className="ml-3 shrink-0 rounded-xl p-2.5 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-50"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {error && (
             <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-300">
               <AlertCircle size={16} /> {error}
@@ -195,19 +195,22 @@ export default function EpisodePagesManager({
                 <p className="text-sm font-medium text-surface-300">
                   {pages.length} Halaman
                 </p>
-                <p className="text-xs text-surface-500">
+                <p className="hidden text-xs text-surface-500 sm:inline">
                   Klik gambar untuk preview · Hover untuk aksi
+                </p>
+                <p className="text-xs text-surface-500 sm:hidden">
+                  Ketuk gambar untuk preview
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {pages.map((page) => (
                   <div
                     key={page.id}
-                    className="group relative overflow-hidden rounded-xl border border-surface-800 bg-surface-950 transition-all hover:border-surface-600 hover:shadow-lg"
+                    className="group relative overflow-hidden rounded-xl border border-surface-800 bg-surface-950 shadow-md transition-all hover:border-surface-600 hover:shadow-lg"
                   >
                     {/* Thumbnail */}
                     <div
-                      className="relative aspect-[3/4] cursor-pointer overflow-hidden bg-surface-900"
+                      className="relative aspect-[3/4] w-full cursor-pointer overflow-hidden bg-surface-900"
                       onClick={() => setPreviewPage(page)}
                     >
                       <img
@@ -215,25 +218,25 @@ export default function EpisodePagesManager({
                         alt={`Halaman ${page.page_number}`}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
-                      {/* Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                      {/* Overlay — always visible on mobile for readability */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100" />
 
                       {/* Page Number Badge */}
                       <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-md bg-black/70 text-xs font-bold text-white backdrop-blur-sm">
                         {page.page_number}
                       </span>
 
-                      {/* Action Buttons on Hover */}
-                      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      {/* Action Buttons — always visible on mobile, hover on desktop */}
+                      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-1 rounded-lg bg-black/40 py-1 backdrop-blur-sm sm:bg-transparent sm:py-0 sm:backdrop-blur-none sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             setPreviewPage(page)
                           }}
-                          className="rounded-lg bg-white/20 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                          className="rounded-md bg-white/20 p-1.5 text-white transition-colors hover:bg-white/30"
                           title="Preview"
                         >
-                          <ZoomIn size={14} />
+                          <ZoomIn size={13} />
                         </button>
                         <button
                           onClick={(e) => {
@@ -242,20 +245,20 @@ export default function EpisodePagesManager({
                             setReplaceFile(null)
                             setReplaceError('')
                           }}
-                          className="rounded-lg bg-sky-500/80 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-sky-500"
+                          className="rounded-md bg-sky-500/80 p-1.5 text-white transition-colors hover:bg-sky-500"
                           title="Ganti Gambar"
                         >
-                          <Replace size={14} />
+                          <Replace size={13} />
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             setDeleteTarget(page)
                           }}
-                          className="rounded-lg bg-red-500/80 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-red-500"
+                          className="rounded-md bg-red-500/80 p-1.5 text-white transition-colors hover:bg-red-500"
                           title="Hapus"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
@@ -332,48 +335,50 @@ export default function EpisodePagesManager({
 
       {/* ====== Modal Preview ====== */}
       {previewPage && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 px-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90">
+          {/* Close button — below header, right side */}
           <button
             onClick={() => setPreviewPage(null)}
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+            className="absolute right-4 top-20 z-[70] flex items-center gap-2 rounded-2xl bg-gradient-to-r from-red-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-red-500/30 transition-all hover:brightness-110 hover:scale-105 active:scale-95 sm:right-6 sm:top-24"
           >
-            <X size={20} />
+            <X size={18} /> Tutup
           </button>
 
-          {/* Prev */}
+          {/* Prev — bottom on mobile, left on desktop */}
           {pages.indexOf(previewPage) > 0 && (
             <button
               onClick={() => {
                 const idx = pages.indexOf(previewPage)
                 setPreviewPage(pages[idx - 1])
               }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              className="absolute bottom-24 left-1/2 z-[70] -translate-x-16 rounded-full bg-white/15 p-4 text-white backdrop-blur-md transition-all hover:bg-white/25 hover:scale-110 active:scale-95 sm:bottom-auto sm:left-6 sm:top-1/2 sm:-translate-x-0 sm:-translate-y-1/2 sm:p-3"
             >
-              <ChevronLeft size={24} />
+              <ChevronLeft size={26} />
             </button>
           )}
 
-          {/* Next */}
+          {/* Next — bottom on mobile, right on desktop */}
           {pages.indexOf(previewPage) < pages.length - 1 && (
             <button
               onClick={() => {
                 const idx = pages.indexOf(previewPage)
                 setPreviewPage(pages[idx + 1])
               }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              className="absolute bottom-24 right-1/2 z-[70] translate-x-16 rounded-full bg-white/15 p-4 text-white backdrop-blur-md transition-all hover:bg-white/25 hover:scale-110 active:scale-95 sm:bottom-auto sm:right-6 sm:top-1/2 sm:translate-x-0 sm:-translate-y-1/2 sm:p-3"
             >
-              <ChevronRight size={24} />
+              <ChevronRight size={26} />
             </button>
           )}
 
+          {/* Image with proper z-index */}
           <img
             src={previewPage.image_url}
             alt={`Halaman ${previewPage.page_number}`}
-            className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            className="relative z-[65] max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
           />
 
-          {/* Info */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-sm text-white backdrop-blur-sm">
+          {/* Info bar */}
+          <div className="absolute bottom-4 left-1/2 z-[70] -translate-x-1/2 rounded-full bg-black/70 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-md">
             Halaman {previewPage.page_number} dari {pages.length}
           </div>
         </div>

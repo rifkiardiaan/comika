@@ -45,10 +45,12 @@ with zipfile.ZipFile(ZIP_PATH, 'w', zipfile.ZIP_DEFLATED) as zf:
         for f in os.listdir(assets_dir):
             zf.write(os.path.join(assets_dir, f), prefix + "/assets/" + f)
 
-    # 3. .htaccess -> public_html/.htaccess
-    htaccess_src = os.path.join(PROJECT_ROOT, "deploy", "infinityfree", ".htaccess")
-    if os.path.exists(htaccess_src):
-        zf.write(htaccess_src, prefix + "/.htaccess")
+    # 3. .htaccess + deploy scripts -> public_html/
+    inf_dir = os.path.join(PROJECT_ROOT, "deploy", "infinityfree")
+    for fname in ['.htaccess', '.user.ini', 'setup.php', 'diagnose.php', 'test.php', 'fix_db.php', 'update_db_password.php']:
+        src = os.path.join(inf_dir, fname)
+        if os.path.exists(src):
+            zf.write(src, prefix + "/" + fname)
 
     # 4. Backend -> public_html/app/
     backend_dir = os.path.join(PROJECT_ROOT, "backend")
