@@ -130,11 +130,23 @@ export default function CreatorComicDetailPage() {
   }
 
   if (error || !comic) {
+    const isUnauthorized = error?.includes('unauthorized') || error?.includes('tidak diizinkan') || error?.includes('This action is unauthorized')
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center px-4 text-center">
-        <AlertCircle size={36} className="text-red-400" />
-        <h1 className="mt-4 font-display text-2xl font-bold text-surface-50">Komik Tidak Ditemukan</h1>
-        <p className="mt-2 text-sm text-surface-400">{error}</p>
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/15">
+          <AlertCircle size={36} className="text-amber-400" />
+        </div>
+        <h1 className="mt-4 font-display text-2xl font-bold text-surface-50">
+          {isUnauthorized ? 'Komik Akan Segera Dipublish' : 'Komik Tidak Ditemukan'}
+        </h1>
+        <p className="mt-2 text-sm text-surface-400">
+          {isUnauthorized
+            ? 'Komik Anda sedang menunggu persetujuan admin untuk dipublikasikan. Mohon tunggu sampai admin menyetujui komik Anda.'
+            : error || 'Gagal memuat data komik.'}
+        </p>
+        <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200/80">
+          💡 Komik yang baru diunggah akan menunggu persetujuan admin sebelum diterbitkan.
+        </div>
         <Link
           to="/creator/comics"
           className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, Coins, Loader2, Search, Trash2 } from 'lucide-react'
+import { AlertCircle, Ban, Coins, Loader2, Search, ShieldAlert, Trash2, Unlock } from 'lucide-react'
 import Avatar from '../../components/Avatar'
 import PageHeader from '../../components/admin/PageHeader'
 import { RoleBadge } from '../../components/admin/Badge'
@@ -29,6 +29,11 @@ export default function AdminUsersPage() {
   const [busyId, setBusyId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [banBusyId, setBanBusyId] = useState<number | null>(null)
+  const [banTarget, setBanTarget] = useState<AdminUser | null>(null)
+  const [banReason, setBanReason] = useState('')
+  const [permanentBanTarget, setPermanentBanTarget] = useState<AdminUser | null>(null)
+  const [permanentBanReason, setPermanentBanReason] = useState('')
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -76,6 +81,54 @@ export default function AdminUsersPage() {
       setDeleteTarget(null)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const banUser = async () => {
+    if (!banTarget) return
+    setBanBusyId(banTarget.id)
+    setNotice('')
+    try {
+      await admin.banUser(banTarget.id, banReason || undefined)
+      setNotice(`User ${banTarget.name} berhasil diblokir.`)
+      setBanTarget(null)
+      setBanReason('')
+      await fetchUsers()
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal memblokir user.'))
+    } finally {
+      setBanBusyId(null)
+    }
+  }
+
+  const unbanUser = async (user: AdminUser) => {
+    setBanBusyId(user.id)
+    setNotice('')
+    try {
+      await admin.unbanUser(user.id)
+      setNotice(`Blokir user ${user.name} berhasil dibuka.`)
+      await fetchUsers()
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal membuka blokir user.'))
+    } finally {
+      setBanBusyId(null)
+    }
+  }
+
+  const permanentBanUser = async () => {
+    if (!permanentBanTarget || !permanentBanReason) return
+    setBanBusyId(permanentBanTarget.id)
+    setNotice('')
+    try {
+      await admin.permanentBanUser(permanentBanTarget.id, permanentBanReason)
+      setNotice(`User ${permanentBanTarget.name} berhasil diblokir permanen.`)
+      setPermanentBanTarget(null)
+      setPermanentBanReason('')
+      await fetchUsers()
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal memblokir permanen user.'))
+    } finally {
+      setBanBusyId(null)
     }
   }
 
@@ -207,14 +260,59 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-5 py-3.5 text-surface-300">{u.comics_count}</td>
                       <td className="px-5 py-3.5 text-surface-400">{formatDate(u.created_at)}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1">
+                          {u.is_permanently_banned && (
+                            <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-300">
+                              Diblokir Permanen
+                            </span>
+                          )}
+                          {u.is_banned && !u.is_permanently_banned && (
+                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                              Diblokir
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5 text-right">
-                        <button
-                          onClick={() => setDeleteTarget(u)}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
-                          title="Hapus user"
-                        >
-                          <Trash2 size={14} /> Hapus
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          {u.is_banned ? (
+                            <button
+                              onClick={() => unbanUser(u)}
+                              disabled={banBusyId === u.id}
+                              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/10 disabled:opacity-50"
+                              title="Buka blokir"
+                            >
+                              {banBusyId === u.id ? <Loader2 size={14} className="animate-spin" /> : <Unlock size={14} />} Buka Blokir
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setBanTarget(u)}
+                                disabled={banBusyId === u.id}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/10 disabled:opacity-50"
+                                title="Blokir sementara"
+                              >
+                                <Ban size={14} /> Blokir
+                              </button>
+                              <button
+                                onClick={() => setPermanentBanTarget(u)}
+                                disabled={banBusyId === u.id}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                                title="Blokir permanen"
+                              >
+                                <ShieldAlert size={14} /> Permanen
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => setDeleteTarget(u)}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                            title="Hapus user"
+                          >
+                            <Trash2 size={14} /> Hapus
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -268,6 +366,51 @@ export default function AdminUsersPage() {
       </div>
 
       {!loading && users.length > 0 && <Pagination meta={meta} onPageChange={setPage} />}
+
+      {/* Ban Dialog */}
+      <ConfirmDialog
+        open={banTarget !== null}
+        title="Blokir Pengguna"
+        description={
+          banTarget
+            ? `User "${banTarget.name}" (@${banTarget.username}) akan diblokir sementara. User tidak bisa login selama blokir aktif.`
+            : ''
+        }
+        confirmLabel="Blokir"
+        loading={banBusyId !== null}
+        onConfirm={banUser}
+        onCancel={() => { setBanTarget(null); setBanReason('') }}
+      >
+        <input
+          value={banReason}
+          onChange={(e) => setBanReason(e.target.value)}
+          placeholder="Alasan blokir (opsional)"
+          className="mt-3 w-full rounded-lg border border-surface-800 bg-surface-950 px-3 py-2 text-sm text-surface-200 focus:border-brand-500 focus:outline-none"
+        />
+      </ConfirmDialog>
+
+      {/* Permanent Ban Dialog */}
+      <ConfirmDialog
+        open={permanentBanTarget !== null}
+        title="Blokir Permanen Pengguna"
+        description={
+          permanentBanTarget
+            ? `User "${permanentBanTarget.name}" (@${permanentBanTarget.username}) akan diblokir PERMANEN. User tidak akan bisa login lagi dan semua komiknya akan dihapus. Tindakan ini tidak dapat dibatalkan.`
+            : ''
+        }
+        confirmLabel="Blokir Permanen"
+        loading={banBusyId !== null}
+        onConfirm={permanentBanUser}
+        onCancel={() => { setPermanentBanTarget(null); setPermanentBanReason('') }}
+      >
+        <input
+          value={permanentBanReason}
+          onChange={(e) => setPermanentBanReason(e.target.value)}
+          placeholder="Alasan blokir permanen (wajib)"
+          className="mt-3 w-full rounded-lg border border-surface-800 bg-surface-950 px-3 py-2 text-sm text-surface-200 focus:border-brand-500 focus:outline-none"
+          required
+        />
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={deleteTarget !== null}

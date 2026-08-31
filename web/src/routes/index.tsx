@@ -34,6 +34,8 @@ import AdminDashboardPage from '../pages/admin/AdminDashboardPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
 import AdminCreatorsPage from '../pages/admin/AdminCreatorsPage'
 import AdminComicsPage from '../pages/admin/AdminComicsPage'
+import AdminEpisodesPage from '../pages/admin/AdminEpisodesPage'
+import AdminReadingReportPage from '../pages/admin/AdminReadingReportPage'
 import AdminCommentsPage from '../pages/admin/AdminCommentsPage'
 import AdminReportsPage from '../pages/admin/AdminReportsPage'
 import AdminGenresPage from '../pages/admin/AdminGenresPage'
@@ -88,6 +90,8 @@ export const router = createBrowserRouter([
       { path: 'users', element: <AdminUsersPage /> },
       { path: 'creators', element: <AdminCreatorsPage /> },
       { path: 'comics', element: <AdminComicsPage /> },
+      { path: 'reading', element: <AdminReadingReportPage /> },
+      { path: 'comics/:comicId/episodes', element: <AdminEpisodesPage /> },
       { path: 'comments', element: <AdminCommentsPage /> },
       { path: 'reports', element: <AdminReportsPage /> },
       { path: 'genres', element: <AdminGenresPage /> },

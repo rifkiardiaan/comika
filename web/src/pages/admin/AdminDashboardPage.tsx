@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
     )
   }
 
-  const { users, comics, episodes, comments, reports, engagement } = stats
+  const { users, comics, episodes, comments, reports, engagement, revenue, pending_verification } = stats
   const pendingCreatorApps = creatorApps // already filtered by API to 'pending'
 
   return (
@@ -168,6 +168,31 @@ export default function AdminDashboardPage() {
           icon={Flag}
           tone="bg-amber-500/15 text-amber-300"
           sub="menunggu moderasi"
+        />
+      </div>
+
+      {/* Revenue + pending verification */}
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Pendapatan Platform"
+          value={`Rp ${revenue.total.toLocaleString('id-ID')}`}
+          icon={TrendingUp}
+          tone="bg-emerald-500/15 text-emerald-300"
+          sub={`${revenue.total_unlocks} episode terunlock`}
+        />
+        <StatCard
+          label="Pendapatan Bulan Ini"
+          value={`Rp ${revenue.monthly.toLocaleString('id-ID')}`}
+          icon={TrendingUp}
+          tone="bg-sky-500/15 text-sky-300"
+          sub="share 40% platform"
+        />
+        <StatCard
+          label="Komik Menunggu Verifikasi"
+          value={pending_verification.toLocaleString('id-ID')}
+          icon={BookOpen}
+          tone="bg-amber-500/15 text-amber-300"
+          sub="perlu review admin"
         />
       </div>
 

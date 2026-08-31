@@ -65,4 +65,12 @@ class ApiConstants {
   static String episodeUnlock(int episodeId) => '$baseUrl/episodes/$episodeId/unlock';
   static String purchasePackage(int packageId) => '$coinPackages/$packageId/purchase';
   static String comicComments(int comicId) => '$comics/$comicId/comments';
+
+  // Creator
+  static const String creatorDashboard = '$baseUrl/creator/dashboard';
+  static const String creatorComics = '$baseUrl/creator/comics';
+  static const String creatorProfile = '$baseUrl/creator/profile';
+  static String creatorComicAnalytics(int comicId) => '$baseUrl/creator/comics/$comicId/analytics';
+  static const String creatorEarnings = '$baseUrl/creator/earnings';
+  static const String creatorWithdrawals = '$baseUrl/creator/withdrawals';
 }

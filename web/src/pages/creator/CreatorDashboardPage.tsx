@@ -11,6 +11,7 @@ import {
   Loader2,
   Lock,
   MessageSquare,
+  PieChart,
   Star,
   Users,
 } from 'lucide-react'
@@ -138,6 +139,46 @@ export default function CreatorDashboardPage() {
           </p>
         </Link>
       </section>
+
+      {/* ====== Reading Report: Free vs Paid ====== */}
+      {data?.reading_report && (
+        <section className="mt-6 rounded-2xl border border-surface-800 bg-surface-900 p-5">
+          <h2 className="mb-4 flex items-center gap-2 font-display text-base font-bold text-surface-50">
+            <PieChart size={16} className="text-violet-300" /> Laporan Pembacaan
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="rounded-xl bg-surface-800/50 p-4">
+              <p className="text-xs font-medium text-surface-400">Pembacaan Gratis</p>
+              <p className="mt-1 font-display text-2xl font-bold text-emerald-300">
+                {data.reading_report.free_reads.toLocaleString('id-ID')}
+              </p>
+              <p className="mt-0.5 text-[11px] text-surface-500">episode gratis dibaca</p>
+            </div>
+            <div className="rounded-xl bg-surface-800/50 p-4">
+              <p className="text-xs font-medium text-surface-400">Pembacaan Berbayar</p>
+              <p className="mt-1 font-display text-2xl font-bold text-amber-300">
+                {data.reading_report.paid_reads.toLocaleString('id-ID')}
+              </p>
+              <p className="mt-0.5 text-[11px] text-surface-500">episode premium di-unlock</p>
+            </div>
+            <div className="rounded-xl bg-surface-800/50 p-4">
+              <p className="text-xs font-medium text-surface-400">Total Koin dari Berbayar</p>
+              <p className="mt-1 font-display text-2xl font-bold text-sky-300">
+                {data.reading_report.total_coins_from_paid.toLocaleString('id-ID')}
+              </p>
+              <p className="mt-0.5 text-[11px] text-surface-500">koin dari unlock premium</p>
+            </div>
+          </div>
+          <p className="mt-3 text-center text-xs text-surface-500">
+            Rasio Gratis:Berbayar = {data.reading_report.free_vs_paid_ratio}
+          </p>
+        </section>
+      )}
+
+      {/* ====== Note: Creator can't publish, only admin can ====== */}
+      <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+        <strong>Catatan:</strong> Anda hanya bisa mengunggah komik dan episode. Pempublikasikan hanya bisa dilakukan oleh admin. Komik/episode Anda akan dipublikasikan setelah disetujui admin.
+      </div>
 
       {/* ====== Recent episodes + comments ====== */}
       <section className="mt-10 grid gap-6 lg:grid-cols-2">

@@ -7,6 +7,7 @@ import '../../../models/user.dart';
 import '../../../services/api_service.dart';
 import '../../../services/auth_service.dart';
 import '../../auth/presentation/login_screen.dart';
+import '../../creator/presentation/creator_dashboard_screen.dart';
 import '../../gamification/data/gamification_repository.dart';
 import '../../wallet/presentation/wallet_screen.dart';
 
@@ -469,9 +470,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _menuTile(
               icon: Icons.palette_outlined,
               color: Colors.pinkAccent,
-              title: 'Creator',
-              subtitle: 'Kelola komik & episode lewat web',
-              onTap: () {},
+              title: 'Dashboard Creator',
+              subtitle: 'Statistik, laporan pembacaan & pendapatan',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CreatorDashboardScreen()),
+              ),
             ),
           if (user.isAdmin)
             _menuTile(
@@ -480,6 +483,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Admin',
               subtitle: 'Panel admin tersedia di web',
               onTap: () {},
+            ),
+
+          // Ban status indicator
+          if (user.isBlocked)
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.block, color: Colors.redAccent, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.isPermanentlyBanned ? 'Akun Diblokir Permanen' : 'Akun Diblokir',
+                          style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                        if (user.banReason != null && user.banReason!.isNotEmpty)
+                          Text(user.banReason!, style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
 
           const SizedBox(height: 24),

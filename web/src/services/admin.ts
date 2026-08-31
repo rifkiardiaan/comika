@@ -51,6 +51,21 @@ export const admin = {
     await api.delete(`/admin/users/${id}`)
   },
 
+  async banUser(id: number, banReason?: string): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${id}/ban`, { ban_reason: banReason })
+    return data.data
+  },
+
+  async unbanUser(id: number): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${id}/unban`)
+    return data.data
+  },
+
+  async permanentBanUser(id: number, banReason: string): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${id}/permanent-ban`, { ban_reason: banReason })
+    return data.data
+  },
+
   // ============ Creators ============
   async creators(params: { q?: string; verified?: boolean; page?: number } = {}): Promise<ListResponse<AdminCreator>> {
     const { data } = await api.get<ListResponse<AdminCreator>>('/admin/creators', { params })
@@ -79,6 +94,52 @@ export const admin = {
 
   async deleteComicCover(id: number): Promise<AdminComic> {
     const { data } = await api.delete<{ data: AdminComic }>(`/admin/comics/${id}/cover`)
+    return data.data
+  },
+
+  async publishComic(id: number): Promise<AdminComic> {
+    const { data } = await api.post<{ data: AdminComic }>(`/admin/comics/${id}/publish`)
+    return data.data
+  },
+
+  async verifyComic(id: number, payload: { verification_status: 'approved' | 'rejected'; rejection_reason?: string }): Promise<AdminComic> {
+    const { data } = await api.patch<{ data: AdminComic }>(`/admin/comics/${id}/verify`, payload)
+    return data.data
+  },
+
+  async blockComic(id: number): Promise<AdminComic> {
+    const { data } = await api.post<{ data: AdminComic }>(`/admin/comics/${id}/block`)
+    return data.data
+  },
+
+  async publishEpisode(episodeId: number): Promise<{ id: number; title: string; number: number; status: string }> {
+    const { data } = await api.post<{ data: { id: number; title: string; number: number; status: string } }>(`/admin/episodes/${episodeId}/publish`)
+    return data.data
+  },
+
+  async comicEpisodes(comicId: number): Promise<{ comic: { id: number; title: string }; episodes: Array<{ id: number; number: number; title: string; status: 'draft' | 'published'; is_premium: boolean; price_coin: number; view_count: number; like_count: number; page_count: number; comments_count: number; published_at: string | null }> }> {
+    const { data } = await api.get<{ data: { comic: { id: number; title: string }; episodes: Array<{ id: number; number: number; title: string; status: 'draft' | 'published'; is_premium: boolean; price_coin: number; view_count: number; like_count: number; page_count: number; comments_count: number; published_at: string | null }> } }>(`/admin/comics/${comicId}/episodes`)
+    return data.data
+  },
+
+  async episodePages(episodeId: number): Promise<{ episode: { id: number; number: number; title: string; status: string; is_premium: boolean }; pages: Array<{ id: number; page_number: number; image_url: string }> }> {
+    const { data } = await api.get<{ data: { episode: { id: number; number: number; title: string; status: string; is_premium: boolean }; pages: Array<{ id: number; page_number: number; image_url: string }> } }>(`/admin/episodes/${episodeId}/pages`)
+    return data.data
+  },
+
+  async revenue(): Promise<{ total_revenue: number; monthly_revenue: number; total_coin_revenue: number; revenue_by_comic: Array<{ comic_id: number; comic_title: string; total_creator_earnings: number; total_revenue: number }> }> {
+    const { data } = await api.get<{ data: { total_revenue: number; monthly_revenue: number; total_coin_revenue: number; revenue_by_comic: Array<{ comic_id: number; comic_title: string; total_creator_earnings: number; total_revenue: number }> } }>('/admin/revenue')
+    return data.data
+  },
+
+  // ============ Reading Report ============
+  async readingReport(params: { q?: string; type?: string; user_id?: number; comic_id?: number; page?: number; since?: string; per_page?: number } = {}): Promise<ListResponse<{ id: number; user: { id: number; name: string; username: string; avatar_url: string | null; is_vvip: boolean }; comic: { id: number; title: string; cover_url: string | null }; episode: { id: number; number: number; title: string; is_premium: boolean; price_coin: number }; access_type: string; coins_spent: number; progress: number; is_completed: boolean; last_page: number; updated_at: string }>> {
+    const { data } = await api.get('/admin/reading/report', { params })
+    return data
+  },
+
+  async readingStats(): Promise<{ total_reads: number; unique_readers: number; unique_comics_read: number; free_reads: number; paid_reads: number; vvip_reads: number; total_coins_spent: number; last_updated: string | null; top_comics: Array<{ comic_id: number; read_count: number; comic: { id: number; title: string; cover_url: string | null } }>; top_readers: Array<{ user_id: number; read_count: number; user: { id: number; name: string; username: string; avatar_url: string | null } }> }> {
+    const { data } = await api.get<{ data: any }>('/admin/reading/stats')
     return data.data
   },
 
@@ -158,7 +219,7 @@ export const admin = {
     return data.data
   },
 
-  async subscribers(params: { q?: string; tier?: 'premium' | 'vvip'; page?: number } = {}): Promise<ListResponse<AdminUser>> {
+  async subscribers(params: { q?: string; tier?: 'premium' | 'vvip' | 'free'; page?: number } = {}): Promise<ListResponse<AdminUser>> {
     const { data } = await api.get<ListResponse<AdminUser>>('/admin/subscribers', { params })
     return data
   },

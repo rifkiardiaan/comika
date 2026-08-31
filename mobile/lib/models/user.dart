@@ -9,6 +9,9 @@ class User {
   final int coinBalance;
   final String createdAt;
   final bool isEmailVerified;
+  final bool isBanned;
+  final bool isPermanentlyBanned;
+  final String? banReason;
 
   const User({
     required this.id,
@@ -20,10 +23,14 @@ class User {
     required this.coinBalance,
     required this.createdAt,
     this.isEmailVerified = false,
+    this.isBanned = false,
+    this.isPermanentlyBanned = false,
+    this.banReason,
   });
 
   bool get isCreator => role == 'creator';
   bool get isAdmin => role == 'admin';
+  bool get isBlocked => isBanned || isPermanentlyBanned;
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -36,6 +43,9 @@ class User {
       coinBalance: (json['coin_balance'] as num?)?.toInt() ?? 0,
       createdAt: json['created_at'] as String? ?? '',
       isEmailVerified: json['is_email_verified'] as bool? ?? false,
+      isBanned: json['is_banned'] as bool? ?? false,
+      isPermanentlyBanned: json['is_permanently_banned'] as bool? ?? false,
+      banReason: json['ban_reason'] as String?,
     );
   }
 }

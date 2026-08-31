@@ -45,7 +45,7 @@ export const readingTime = (pages: number): string => {
 export const assetUrl = (path: string | null | undefined): string | null => {
   if (!path) return null
   if (/^https?:\/\//.test(path)) return path
-  const base = import.meta.env.VITE_API_URL ?? '/api/v1'
+  const base = import.meta.env.VITE_API_URL || '/api/v1'
   // VITE_API_URL bisa berupa path relatif ("/api/v1") atau URL absolut
   const apiBase = /^https?:\/\//.test(base) ? new URL(base).origin : window.location.origin
   return `${apiBase}/storage/${path.replace(/^\//, '')}`

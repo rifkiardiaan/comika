@@ -58,6 +58,19 @@ class AuthService extends ChangeNotifier {
     return user;
   }
 
+  /// Cek apakah user yang sedang login sedang diblokir.
+  /// Return null jika tidak diblokir, atau String pesan error jika diblokir.
+  String? checkBanStatus() {
+    if (_user == null) return null;
+    if (_user!.isPermanentlyBanned) {
+      return 'Akun Anda telah diblokir permanen oleh admin.';
+    }
+    if (_user!.isBanned) {
+      return 'Akun Anda sedang diblokir oleh admin. ${_user!.banReason ?? ''}';
+    }
+    return null;
+  }
+
   Future<User> register({
     required String name,
     required String username,

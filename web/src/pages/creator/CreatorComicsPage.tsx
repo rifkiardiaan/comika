@@ -3,11 +3,16 @@ import { Link } from 'react-router-dom'
 import {
   AlertCircle,
   BookOpen,
+  CheckCircle2,
+  Clock,
   Eye,
   FilePlus2,
   Loader2,
   Pencil,
   Plus,
+  Send,
+  Shield,
+  ShieldOff,
   Star,
   Trash2,
   X,
@@ -23,7 +28,7 @@ import { creator } from '../../services/creator'
 import { getApiErrorMessage } from '../../utils/errors'
 import { coverEmoji, coverKeyOf, coverStyle } from '../../data/mock'
 import { formatNumber } from '../../utils/format'
-import type { ComicAgeRating, ComicStatus, CreatorComic, Genre } from '../../types'
+import type { ComicAgeRating, ComicStatus, CreatorComic, Genre, VerificationStatus } from '../../types'
 
 const statusOptions: Array<{ value: ComicStatus; label: string }> = [
   { value: 'ongoing', label: 'Ongoing' },
@@ -48,6 +53,33 @@ interface ComicForm {
 
 const emptyForm: ComicForm = { title: '', synopsis: '', status: 'ongoing', age_rating: 'remaja', genres: [], cover: null }
 
+function VerificationBadge({ status, reason }: { status: VerificationStatus; reason?: string | null }) {
+  switch (status) {
+    case 'approved':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300">
+          <CheckCircle2 size={10} /> Disetujui
+        </span>
+      )
+    case 'rejected':
+      return (
+        <span
+          className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2.5 py-1 text-[10px] font-bold text-red-300"
+          title={reason || 'Ditolak admin'}
+        >
+          <X size={10} /> Ditolak
+        </span>
+      )
+    case 'pending':
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold text-amber-300">
+          <Clock size={10} /> Menunggu Review
+        </span>
+      )
+  }
+}
+
 export default function CreatorComicsPage() {
   const [user] = useState(() => auth.getStoredUser())
   const [comics, setComics] = useState<CreatorComic[]>([])
@@ -69,6 +101,9 @@ export default function CreatorComicsPage() {
   // Hapus
   const [deleteTarget, setDeleteTarget] = useState<CreatorComic | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Cek apakah creator diblokir
+  const isBlocked = (user as any)?.is_banned || (user as any)?.is_permanently_banned
 
   const fetchComics = useCallback(async () => {
     setLoading(true)
@@ -95,6 +130,10 @@ export default function CreatorComicsPage() {
   }, [modal, genres.length])
 
   const openCreate = () => {
+    if (isBlocked) {
+      setNotice('Akun Anda sedang diblokir. Anda tidak dapat mengunggah komik baru.')
+      return
+    }
     setEditing(null)
     setForm(emptyForm)
     setFormError('')
@@ -102,6 +141,10 @@ export default function CreatorComicsPage() {
   }
 
   const openEdit = (comic: CreatorComic) => {
+    if (isBlocked) {
+      setNotice('Akun Anda sedang diblokir. Anda tidak dapat mengedit komik.')
+      return
+    }
     setEditing(comic)
     setForm({
       title: comic.title,
@@ -137,7 +180,7 @@ export default function CreatorComicsPage() {
         setNotice(`Komik "${form.title.trim()}" berhasil diperbarui.`)
       } else {
         await content.createComic(payload)
-        setNotice(`Komik "${form.title.trim()}" berhasil dibuat.`)
+        setNotice(`Komik "${form.title.trim()}" berhasil diunggah! Komik akan ditinjau oleh admin sebelum diterbitkan.`)
       }
       setModal(null)
       await fetchComics()
@@ -168,16 +211,38 @@ export default function CreatorComicsPage() {
     <div className="mx-auto max-w-7xl animate-fade-in px-4 py-10 sm:px-6">
       <PageHeader
         title="Kelola Komik"
-        subtitle="Buat, edit, dan pantau seluruh komik Anda"
+        subtitle="Unggah, edit, dan pantau seluruh komik Anda"
         actions={
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110"
+            disabled={!!isBlocked}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Plus size={16} /> Komik Baru
+            <Send size={16} /> Upload Komik
           </button>
         }
       />
+
+      {/* Blocked notice */}
+      {isBlocked && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/5 px-5 py-4">
+          <ShieldOff size={20} className="shrink-0 text-red-400" />
+          <div>
+            <p className="text-sm font-semibold text-red-300">Akun Anda Diblokir</p>
+            <p className="mt-0.5 text-xs text-red-400/80">
+              Anda tidak dapat mengunggah atau mengedit komik. Hubungi admin untuk informasi lebih lanjut.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Info banner */}
+      <div className="mb-6 flex items-center gap-3 rounded-xl border border-brand-500/30 bg-brand-500/5 px-5 py-4">
+        <Shield size={18} className="shrink-0 text-brand-300" />
+        <p className="text-xs text-brand-200/80">
+          Komik yang Anda unggah akan masuk ke review admin. Admin akan menyetujui, menolak, atau memblokir komik Anda sebelum diterbitkan.
+        </p>
+      </div>
 
       {error && (
         <div className="mb-6 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-300">
@@ -190,6 +255,34 @@ export default function CreatorComicsPage() {
         </div>
       )}
 
+      {/* Stats summary */}
+      {!loading && comics.length > 0 && (
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-surface-800 bg-surface-900 p-3 text-center">
+            <p className="text-lg font-bold text-surface-50">{comics.length}</p>
+            <p className="text-[10px] text-surface-400">Total Komik</p>
+          </div>
+          <div className="rounded-xl border border-surface-800 bg-surface-900 p-3 text-center">
+            <p className="text-lg font-bold text-amber-300">
+              {comics.filter((c) => c.verification_status === 'pending').length}
+            </p>
+            <p className="text-[10px] text-surface-400">⏳ Pending Review</p>
+          </div>
+          <div className="rounded-xl border border-surface-800 bg-surface-900 p-3 text-center">
+            <p className="text-lg font-bold text-emerald-300">
+              {comics.filter((c) => c.verification_status === 'approved').length}
+            </p>
+            <p className="text-[10px] text-surface-400">✓ Disetujui</p>
+          </div>
+          <div className="rounded-xl border border-surface-800 bg-surface-900 p-3 text-center">
+            <p className="text-lg font-bold text-red-300">
+              {comics.filter((c) => c.verification_status === 'rejected').length}
+            </p>
+            <p className="text-[10px] text-surface-400">✗ Ditolak</p>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-2xl border border-surface-800 bg-surface-900">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-surface-500">
@@ -197,20 +290,20 @@ export default function CreatorComicsPage() {
           </div>
         ) : comics.length === 0 ? (
           <div className="p-6">
-            <EmptyState message="Belum ada komik. Klik Komik Baru untuk mulai menerbitkan karya Anda." />
+            <EmptyState message="Belum ada komik. Klik Upload Komik untuk mulai mengunggah karya Anda." />
           </div>
         ) : (
           <>
             {/* Desktop Table */}
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[700px] text-left text-sm">
+              <table className="w-full min-w-[800px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-surface-800 text-xs uppercase tracking-wide text-surface-500">
                     <th className="px-5 py-3 font-medium">Komik</th>
+                    <th className="px-5 py-3 font-medium">Verifikasi</th>
                     <th className="px-5 py-3 font-medium">Status</th>
                     <th className="px-5 py-3 text-center font-medium">Eps</th>
                     <th className="px-5 py-3 text-center font-medium">Rating</th>
-                    <th className="px-5 py-3 text-center font-medium">Pengikut</th>
                     <th className="px-5 py-3 text-right font-medium">Views</th>
                     <th className="px-5 py-3 text-right font-medium">Aksi</th>
                   </tr>
@@ -233,8 +326,16 @@ export default function CreatorComicsPage() {
                             <p className="text-xs text-surface-500">
                               {c.published_episodes_count} terbit · {c.draft_episodes_count} draft · {c.comments_count} komentar
                             </p>
+                            {c.rejection_reason && c.verification_status === 'rejected' && (
+                              <p className="mt-0.5 max-w-48 truncate text-[10px] text-red-400" title={c.rejection_reason}>
+                                Alasan: {c.rejection_reason}
+                              </p>
+                            )}
                           </div>
                         </Link>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <VerificationBadge status={c.verification_status} reason={c.rejection_reason} />
                       </td>
                       <td className="px-5 py-3.5">
                         <StatusBadge status={c.status} />
@@ -245,7 +346,6 @@ export default function CreatorComicsPage() {
                           <Star size={13} fill="currentColor" /> {c.rating_avg.toFixed(1)}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-center text-surface-300">{formatNumber(c.followers_count)}</td>
                       <td className="px-5 py-3.5 text-right">
                         <span className="flex items-center justify-end gap-1.5 text-surface-300">
                           <Eye size={13} className="text-emerald-400" /> {formatNumber(c.view_count)}
@@ -262,7 +362,8 @@ export default function CreatorComicsPage() {
                           </Link>
                           <button
                             onClick={() => openEdit(c)}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-300 transition-colors hover:bg-sky-500/10"
+                            disabled={!!isBlocked}
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-300 transition-colors hover:bg-sky-500/10 disabled:opacity-40"
                             title="Edit"
                           >
                             <Pencil size={14} />
@@ -296,17 +397,22 @@ export default function CreatorComicsPage() {
                       <p className="truncate font-medium text-surface-100 transition-colors hover:text-brand-300">
                         {c.title}
                       </p>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex items-center gap-2 flex-wrap">
+                        <VerificationBadge status={c.verification_status} reason={c.rejection_reason} />
                         <StatusBadge status={c.status} />
                         <span className="text-xs text-surface-500">{c.episode_count} eps</span>
                       </div>
                     </div>
                   </Link>
+                  {c.rejection_reason && c.verification_status === 'rejected' && (
+                    <p className="mb-2 ml-16 text-[10px] text-red-400">
+                      Alasan penolakan: {c.rejection_reason}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between text-xs text-surface-400">
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1"><Star size={12} className="text-amber-300" fill="currentColor" /> {c.rating_avg.toFixed(1)}</span>
                       <span className="flex items-center gap-1"><Eye size={12} className="text-emerald-400" /> {formatNumber(c.view_count)}</span>
-                      <span>{formatNumber(c.followers_count)} pengikut</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Link
@@ -317,7 +423,8 @@ export default function CreatorComicsPage() {
                       </Link>
                       <button
                         onClick={() => openEdit(c)}
-                        className="rounded-lg p-2 text-sky-300 transition-colors hover:bg-sky-500/10"
+                        disabled={!!isBlocked}
+                        className="rounded-lg p-2 text-sky-300 transition-colors hover:bg-sky-500/10 disabled:opacity-40"
                       >
                         <Pencil size={16} />
                       </button>
@@ -346,11 +453,13 @@ export default function CreatorComicsPage() {
             <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-4 flex items-start justify-between gap-4 border-b border-surface-800 bg-surface-900 px-5 py-4 sm:-mx-6 sm:px-6">
               <div>
                 <h3 className="flex items-center gap-2 font-display text-lg font-bold text-surface-50">
-                  {modal === 'edit' ? <Pencil size={18} className="text-sky-300" /> : <FilePlus2 size={18} className="text-brand-300" />}
-                  {modal === 'edit' ? 'Edit Komik' : 'Komik Baru'}
+                  {modal === 'edit' ? <Pencil size={18} className="text-sky-300" /> : <Send size={18} className="text-brand-300" />}
+                  {modal === 'edit' ? 'Edit Komik' : 'Upload Komik Baru'}
                 </h3>
                 <p className="mt-1 text-xs text-surface-500">
-                  {modal === 'edit' ? 'Perbarui detail komik Anda.' : 'Lengkapi informasi komik untuk mulai menerbitkan.'}
+                  {modal === 'edit'
+                    ? 'Perbarui detail komik Anda.'
+                    : 'Lengkapi informasi komik. Komik akan ditinjau admin sebelum diterbitkan.'}
                 </p>
               </div>
               <button
@@ -488,8 +597,8 @@ export default function CreatorComicsPage() {
                   disabled={submitting}
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {submitting ? <Loader2 size={15} className="animate-spin" /> : modal === 'edit' ? <Pencil size={15} /> : <Plus size={15} />}
-                  {submitting ? 'Menyimpan…' : modal === 'edit' ? 'Simpan Perubahan' : 'Buat Komik'}
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : modal === 'edit' ? <Pencil size={15} /> : <Send size={15} />}
+                  {submitting ? 'Menyimpan…' : modal === 'edit' ? 'Simpan Perubahan' : 'Upload Komik'}
                 </button>
               </div>
             </form>

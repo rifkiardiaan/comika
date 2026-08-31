@@ -62,6 +62,7 @@ export default function EpisodeReaderPage() {
     if (id && episodeId) load()
   }, [id, episodeId, load])
 
+  // Scroll progress
   useEffect(() => {
     const onScroll = () => {
       const scrollable = document.documentElement.scrollHeight - window.innerHeight
@@ -72,6 +73,8 @@ export default function EpisodeReaderPage() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  // Reading history otomatis direkam backend saat user membuka halaman episode
 
   const handleUnlock = async () => {
     if (!episode || !isLoggedIn) return

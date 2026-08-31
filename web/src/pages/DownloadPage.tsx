@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Download,
+  ExternalLink,
   Shield,
   Smartphone,
   Star,
@@ -11,29 +12,57 @@ import {
   Coins,
   Crown,
   CheckCircle,
+  RefreshCw,
 } from 'lucide-react'
+import api from '../services/api'
 
-const APK_URL = '/downloads/comika.apk'
-const APP_VERSION = '1.0.0'
-const APP_SIZE = '~25 MB'
-const MIN_ANDROID = '7.0'
+const APK_URL = import.meta.env.VITE_APK_URL || '/api/v1/download/apk'
+const VERSION_URL = import.meta.env.VITE_APK_VERSION_URL || '/api/v1/download/version'
+
+interface VersionInfo {
+  version: string
+  min_android: string
+  file_size: number
+  file_size_human: string
+  available: boolean
+  download_url: string
+}
 
 export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false)
   const [downloadStarted, setDownloadStarted] = useState(false)
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
+  const [checkingUpdate, setCheckingUpdate] = useState(true)
 
   useEffect(() => {
     document.title = 'Download COMIKA — Aplikasi Komik & Webtoon Android'
+    checkVersion()
   }, [])
+
+  const checkVersion = async () => {
+    setCheckingUpdate(true)
+    try {
+      const { data } = await api.get<{ data: VersionInfo }>(VERSION_URL)
+      setVersionInfo(data.data)
+    } catch {
+      // Fallback
+      setVersionInfo({
+        version: '1.0.0',
+        min_android: '7.0',
+        file_size: 0,
+        file_size_human: '~82 MB',
+        available: false,
+        download_url: APK_URL,
+      })
+    } finally {
+      setCheckingUpdate(false)
+    }
+  }
 
   const handleDownload = () => {
     setDownloading(true)
-    const link = document.createElement('a')
-    link.href = APK_URL
-    link.download = 'comika.apk'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Gunakan window.location untuk download langsung
+    window.location.href = APK_URL
     setTimeout(() => {
       setDownloading(false)
       setDownloadStarted(true)
@@ -99,12 +128,35 @@ export default function DownloadPage() {
             Platform komik dan webtoon digital Indonesia. Baca, bagikan, dan monetisasi karya komikmu.
           </p>
 
+          {/* Version info */}
+          {versionInfo && (
+            <div className="mx-auto mt-6 flex items-center justify-center gap-3 text-sm text-surface-500">
+              <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-emerald-400">
+                v{versionInfo.version}
+              </span>
+              {versionInfo.file_size_human && (
+                <span className="rounded-full bg-surface-800 px-3 py-1">
+                  {versionInfo.file_size_human}
+                </span>
+              )}
+              <span className="rounded-full bg-surface-800 px-3 py-1">
+                Android {versionInfo.min_android}+
+              </span>
+            </div>
+          )}
+
           {/* Download Button */}
           <div className="mt-10 flex flex-col items-center gap-4">
+            {versionInfo && !versionInfo.available && (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+                APK belum tersedia. Silakan hubungi admin untuk upload APK.
+              </div>
+            )}
+
             <button
               onClick={handleDownload}
-              disabled={downloading}
-              className="group flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand-600 to-pink-600 px-8 py-4 text-lg font-bold text-white shadow-2xl shadow-brand-600/30 transition-all hover:brightness-110 hover:shadow-brand-500/40 disabled:opacity-60"
+              disabled={downloading || !versionInfo?.available}
+              className="group flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand-600 to-pink-600 px-8 py-4 text-lg font-bold text-white shadow-2xl shadow-brand-600/30 transition-all hover:brightness-110 hover:shadow-brand-500/40 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {downloading ? (
                 <>
@@ -124,15 +176,15 @@ export default function DownloadPage() {
               )}
             </button>
 
-            <div className="flex items-center gap-4 text-sm text-surface-500">
-              <span className="flex items-center gap-1.5">
-                <Smartphone size={14} /> v{APP_VERSION}
-              </span>
-              <span>•</span>
-              <span>{APP_SIZE}</span>
-              <span>•</span>
-              <span>Android {MIN_ANDROID}+</span>
-            </div>
+            {/* Check update */}
+            <button
+              onClick={checkVersion}
+              disabled={checkingUpdate}
+              className="flex items-center gap-1.5 text-xs text-surface-500 transition-colors hover:text-surface-300"
+            >
+              <RefreshCw size={12} className={checkingUpdate ? 'animate-spin' : ''} />
+              {checkingUpdate ? 'Mengecek versi...' : 'Cek update terbaru'}
+            </button>
           </div>
         </div>
       </section>
@@ -201,8 +253,8 @@ export default function DownloadPage() {
           <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <button
               onClick={handleDownload}
-              disabled={downloading}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110"
+              disabled={downloading || !versionInfo?.available}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110 disabled:opacity-60"
             >
               <Smartphone size={18} />
               Download COMIKA

@@ -9,6 +9,7 @@ interface Props {
   danger?: boolean
   onConfirm: () => void
   onCancel: () => void
+  children?: React.ReactNode
 }
 
 export default function ConfirmDialog({
@@ -20,6 +21,7 @@ export default function ConfirmDialog({
   danger = true,
   onConfirm,
   onCancel,
+  children,
 }: Props) {
   if (!open) return null
 
@@ -40,6 +42,7 @@ export default function ConfirmDialog({
             <p className="mt-1 text-sm leading-relaxed text-surface-400">{description}</p>
           </div>
         </div>
+        {children}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             onClick={onCancel}

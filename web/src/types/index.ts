@@ -18,6 +18,9 @@ export interface User {
   vvip_until: string | null
   email_verified_at: string | null
   is_email_verified: boolean
+  is_banned: boolean
+  is_permanently_banned: boolean
+  ban_reason: string | null
   created_at: string
 }
 
@@ -40,6 +43,7 @@ export interface Genre {
 
 export type ComicStatus = 'ongoing' | 'completed' | 'hiatus'
 export type ComicAgeRating = 'semua_umur' | 'remaja' | 'dewasa'
+export type VerificationStatus = 'pending' | 'approved' | 'rejected'
 
 export interface Comic {
   id: number
@@ -377,6 +381,8 @@ export interface CreatorComic extends Comic {
   followers_count: number
   comments_count: number
   bookmarks_count: number
+  verification_status: VerificationStatus
+  rejection_reason: string | null
   episodes?: CreatorEpisode[]
 }
 
@@ -528,6 +534,8 @@ export interface AdminComic {
   cover_url: string | null
   status: ComicStatus
   age_rating: ComicAgeRating
+  verification_status: VerificationStatus
+  rejection_reason: string | null
   rating_avg: number
   rating_count: number
   like_count: number

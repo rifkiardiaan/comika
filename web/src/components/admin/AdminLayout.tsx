@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   BookOpen,
+  Eye,
   Flag,
   Gem,
   Landmark,
@@ -25,9 +26,9 @@ const navItems = [
   { to: '/admin/vvip', label: 'VVIP & Premium', icon: Gem },
   { to: '/admin/creator-applications', label: 'Pengajuan Creator', icon: UserPlus },
   { to: '/admin/creators', label: 'Creator', icon: Palette },
-  { to: '/admin/comics', label: 'Komik', icon: BookOpen },
+  { to: '/admin/comics', label: 'Laporan Komik', icon: Flag },
   { to: '/admin/comments', label: 'Komentar', icon: MessageSquare },
-  { to: '/admin/reports', label: 'Laporan', icon: Flag },
+  { to: '/admin/reading', label: 'Laporan Pembaca', icon: Eye },
   { to: '/admin/genres', label: 'Genre', icon: Tags },
   { to: '/admin/transactions', label: 'Transaksi', icon: Landmark },
 ]
