@@ -172,4 +172,20 @@ export const admin = {
     const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${userId}/revoke-vvip`)
     return data.data
   },
+
+  // ============ Premium Management ============
+  async grantPremium(userId: number, days: number): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${userId}/grant-premium`, { days })
+    return data.data
+  },
+
+  async revokePremium(userId: number): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${userId}/revoke-premium`)
+    return data.data
+  },
+
+  async upgradeToVvip(userId: number, days: number): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${userId}/upgrade-to-vvip`, { days })
+    return data.data
+  },
 }

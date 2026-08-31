@@ -1,15 +1,15 @@
 <?php
 
-use App\Models\User;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 |
-| Route web minimal — hanya untuk verifikasi email (link dari email harus
-| bisa dibuka di browser tanpa token API). Semua logika lain lewat API.
+| Route web minimal — semua logika lain lewat API.
 |
 */
 
@@ -17,18 +17,21 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Verifikasi email via signed URL (dilindungi middleware 'signed').
-// Link dari email → backend memvalidasi → redirect ke halaman frontend.
-Route::get('/email/verify/{id}/{hash}', function (Request $request, int $id, string $hash) {
-    $user = User::findOrFail($id);
+/*
+|--------------------------------------------------------------------------
+| Download APK — serve file dengan header yang benar
+|--------------------------------------------------------------------------
+*/
+Route::get('/downloads/comika.apk', function () {
+    $path = public_path('downloads/comika.apk');
 
-    if (! hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
-        return redirect(config('app.frontend_url').'/verify-email?verified=0');
+    if (! file_exists($path)) {
+        abort(404, 'File APK belum tersedia.');
     }
 
-    if (! $user->hasVerifiedEmail()) {
-        $user->markEmailAsVerified();
-    }
-
-    return redirect(config('app.frontend_url').'/verify-email?verified=1');
-})->middleware(['signed'])->name('verification.verify');
+    return Response::download($path, 'comika.apk', [
+        'Content-Type' => 'application/vnd.android.package-archive',
+        'Content-Disposition' => 'attachment; filename="comika.apk"',
+        'Cache-Control' => 'no-cache, must-revalidate',
+    ]);
+});

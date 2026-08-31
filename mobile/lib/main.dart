@@ -1,103 +1,79 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import 'core/theme/app_theme.dart';
-import 'features/auth/presentation/login_screen.dart';
-import 'main_shell.dart';
-import 'services/auth_service.dart';
+import 'screens/webview_screen.dart';
+import 'services/api_service.dart';
+import 'services/update_service.dart';
+import 'screens/update_dialog.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set status bar style
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Color(0xFF0A0A0F),
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
+
+  // Force portrait orientation
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   runApp(const ComikaApp());
 }
 
-class ComikaApp extends StatelessWidget {
+class ComikaApp extends StatefulWidget {
   const ComikaApp({super.key});
+
+  @override
+  State<ComikaApp> createState() => _ComikaAppState();
+}
+
+class _ComikaAppState extends State<ComikaApp> {
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdate();
+  }
+
+  /// Cek update di background — tidak blocking UI.
+  Future<void> _checkForUpdate() async {
+    // Tunggu sebentar agar splash screen tampil dulu
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+
+    try {
+      final updateInfo = await UpdateService.instance.checkForUpdate();
+      if (updateInfo != null && mounted) {
+        // Tampilkan dialog update (dari context yang valid)
+        showUpdateDialog(context, updateInfo);
+      }
+    } catch (_) {
+      // Abaikan error — update check tidak boleh crash app
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'COMIKA',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
-      home: const AuthGate(),
-    );
-  }
-}
-
-/// Menentukan layar awal: MainShell jika sudah login, LoginScreen jika belum.
-/// Menampilkan splash screen saat memuat sesi tersimpan.
-class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
-
-  @override
-  State<AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<AuthGate> {
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _initAuth();
-    AuthService.instance.addListener(_onAuthChanged);
-  }
-
-  @override
-  void dispose() {
-    AuthService.instance.removeListener(_onAuthChanged);
-    super.dispose();
-  }
-
-  Future<void> _initAuth() async {
-    await AuthService.instance.init();
-    if (mounted) setState(() => _loading = false);
-  }
-
-  void _onAuthChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.brand, AppTheme.pink],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Text(
-                  'C',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppTheme.brand,
-              ),
-            ],
-          ),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.dark(
+          primary: const Color(0xFF7C3AED),
+          secondary: const Color(0xFFEC4899),
+          surface: const Color(0xFF0A0A0F),
         ),
-      );
-    }
-
-    return AuthService.instance.isLoggedIn ? const MainShell() : const LoginScreen();
+        scaffoldBackgroundColor: const Color(0xFF0A0A0F),
+        fontFamily: 'Inter',
+      ),
+      home: const WebViewScreen(),
+    );
   }
 }

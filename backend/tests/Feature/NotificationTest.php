@@ -9,7 +9,9 @@ use App\Models\Follow;
 use App\Models\Genre;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\MidtransService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 class NotificationTest extends TestCase
@@ -29,6 +31,20 @@ class NotificationTest extends TestCase
         $this->admin = User::factory()->admin()->create();
         $this->creator = User::factory()->creator()->create();
         $this->reader = User::factory()->reader()->create();
+
+        // Mock MidtransService untuk testing
+        $midtransMock = Mockery::mock(MidtransService::class);
+        $midtransMock->shouldReceive('createSnapToken')->andReturn([
+            'token' => 'fake-snap-token-' . time(),
+            'redirect_url' => 'https://app.sandbox.midtrans.com/snap/vtweb/fake-token',
+        ]);
+        $this->app->instance(MidtransService::class, $midtransMock);
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 
     private function token(User $user): string
@@ -329,7 +345,7 @@ class NotificationTest extends TestCase
         $this->assertSame('approved', $notification->data['status']);
     }
 
-    public function test_coin_purchase_notifies_buyer(): void
+    public function test_coin_purchase_creates_pending_transaction(): void
     {
         $package = \App\Models\CoinPackage::create([
             'name' => 'Paket 100 Koin',
@@ -338,16 +354,19 @@ class NotificationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->withToken($this->token($this->reader))
-            ->postJson("/api/v1/coin-packages/{$package->id}/purchase")
-            ->assertStatus(201);
+        $response = $this->withToken($this->token($this->reader))
+            ->postJson("/api/v1/coin-packages/{$package->id}/purchase");
 
-        $this->assertDatabaseHas('notifications', [
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure(['data' => ['snap_token', 'order_id']]);
+
+        // Transaksi pending dibuat
+        $this->assertDatabaseHas('transactions', [
             'user_id' => $this->reader->id,
-            'type' => 'transaction',
+            'type' => 'coin_purchase',
+            'coins' => 100,
+            'status' => 'pending',
         ]);
-
-        $notification = Notification::where('user_id', $this->reader->id)->firstOrFail();
-        $this->assertSame(100, $notification->data['coins']);
     }
 }

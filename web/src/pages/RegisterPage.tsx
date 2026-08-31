@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, UserPlus, Loader2 } from 'lucide-react'
 import { auth } from '../services/auth'
 
+
 interface FieldError {
   [key: string]: string[]
 }
@@ -38,7 +39,7 @@ export default function RegisterPage() {
       await auth.register({
         name,
         username,
-        email,
+        email: email.toLowerCase().trim(),
         password,
         password_confirmation: passwordConfirmation,
       })
@@ -74,8 +75,8 @@ export default function RegisterPage() {
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-brand-500 font-display text-2xl font-bold text-white shadow-lg shadow-pink-500/30">
             C
           </span>
-          <h1 className="mt-4 font-display text-2xl font-bold text-surface-50">Buat Akun Baru</h1>
-          <p className="mt-1 text-sm text-surface-400">Mulai membaca dan menerbitkan komik</p>
+          <h1 className="mt-4 font-display text-2xl font-bold text-surface-50">Buat Akun Baru</h1>            <p className="mt-1 text-sm text-surface-400">Mulai membaca dan menerbitkan komik</p>
+
         </div>
 
         <form onSubmit={submit} className="space-y-4" noValidate>
@@ -171,7 +172,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {error && Object.keys(fieldErrors).length === 0 && (
+          {error && (
             <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</p>
           )}
 

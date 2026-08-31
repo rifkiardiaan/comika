@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Crown, Check, Shield, Zap, Loader2, Star, BookOpen, Eye, Gem, Unlock } from 'lucide-react'
+import { Crown, Check, Shield, Zap, Loader2, Star, BookOpen, Eye, Gem, Unlock, CreditCard } from 'lucide-react'
 import { auth } from '../services/auth'
 import { subscription, type SubscriptionPlan, type SubscriptionStatus } from '../services/subscription'
+import { loadSnapSdk, openSnapPayment, midtrans } from '../services/midtrans'
 import type { User } from '../types'
+
+// Client key dari .env (sandbox untuk development)
+const MIDTRANS_CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || ''
+const MIDTRANS_IS_PRODUCTION = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true'
 
 export default function PremiumPage() {
   const [user, setUser] = useState<User | null>(auth.getStoredUser())
@@ -21,6 +26,15 @@ export default function PremiumPage() {
     const sync = () => setUser(auth.getStoredUser())
     window.addEventListener('comika:user', sync)
     return () => window.removeEventListener('comika:user', sync)
+  }, [])
+
+  // Load Midtrans Snap SDK
+  useEffect(() => {
+    if (MIDTRANS_CLIENT_KEY) {
+      loadSnapSdk(MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION).catch(() => {
+        console.warn('Gagal memuat Midtrans Snap SDK')
+      })
+    }
   }, [])
 
   useEffect(() => {
@@ -45,22 +59,48 @@ export default function PremiumPage() {
       navigate('/login')
       return
     }
+
     setSubscribing(true)
     setError('')
+    setSuccess('')
+
     try {
-      const result = await subscription.subscribe(planId)
+      // Dapatkan Snap Token dari backend
+      const result = await midtrans.getSubscriptionSnapToken(planId)
+
+      if (!MIDTRANS_CLIENT_KEY) {
+        setError('Midtrans belum dikonfigurasi. Hubungi admin.')
+        setSubscribing(false)
+        return
+      }
+
       const isVvipPlan = planId.includes('vvip')
-      setSuccess(
-        isVvipPlan
-          ? `🎉 Berhasil berlangganan VVIP! Semua episode premium terbuka selama ${result.days_added} hari.`
-          : `🎉 Berhasil berlangganan Premium! Akses premium aktif selama ${result.days_added} hari.`,
-      )
-      // Refresh status
-      const newStatus = await subscription.status()
-      setStatus(newStatus)
-      // Update user in storage
-      const me = await auth.me()
-      if (me) setUser(me)
+
+      // Buka Midtrans Snap payment popup
+      openSnapPayment(result.snap_token, {
+        onSuccess: async () => {
+          setSuccess(
+            isVvipPlan
+              ? `🎉 Berhasil berlangganan VVIP! Semua episode premium terbuka selama ${result.days_added} hari.`
+              : `🎉 Berhasil berlangganan Premium! Akses premium aktif selama ${result.days_added} hari.`,
+          )
+          // Refresh status
+          const newStatus = await subscription.status()
+          setStatus(newStatus)
+          // Update user in storage
+          const me = await auth.me()
+          if (me) setUser(me)
+        },
+        onPending: () => {
+          setSuccess('Pembayaran sedang diproses. Langganan akan aktif setelah pembayaran dikonfirmasi.')
+        },
+        onError: () => {
+          setError('Pembayaran gagal. Silakan coba lagi.')
+        },
+        onClose: () => {
+          // User tutup popup tanpa bayar
+        },
+      })
     } catch {
       setError('Gagal memproses langganan. Coba lagi.')
     } finally {
@@ -338,10 +378,10 @@ export default function PremiumPage() {
                   : activeTab === 'vvip'
                     ? isCurrentlyVvip
                       ? 'Sudah VVIP'
-                      : 'Langganan VVIP Sekarang'
+                      : 'Bayar & Aktifkan VVIP'
                     : isCurrentlyPremium
                       ? 'Sudah Premium'
-                      : 'Langganan Sekarang'}
+                      : 'Bayar & Aktifkan Premium'}
               </button>
             </div>
           )}
@@ -366,6 +406,25 @@ export default function PremiumPage() {
         </div>
       </section>
 
+      {/* Payment Info */}
+      <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+        <div className="rounded-2xl border border-surface-800 bg-surface-900/60 p-6">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-surface-200">
+            <CreditCard size={16} className="text-brand-400" /> Metode Pembayaran
+          </h3>
+          <p className="mt-2 text-xs text-surface-400">
+            Pembayaran diproses melalui <span className="font-semibold text-surface-300">Midtrans</span> — mendukung:
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {['Transfer BCA', 'Transfer Mandiri', 'Transfer BRI', 'Transfer BNI', 'GoPay', 'OVO', 'DANA', 'ShopeePay', 'QRIS'].map((method) => (
+              <span key={method} className="rounded-lg bg-surface-800 px-2.5 py-1 text-[10px] font-medium text-surface-300">
+                {method}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
         <h2 className="text-center text-lg font-bold text-surface-50">Pertanyaan Umum</h2>
@@ -377,7 +436,7 @@ export default function PremiumPage() {
             },
             {
               q: 'Bagaimana cara berlangganan VVIP?',
-              a: 'Pilih paket VVIP yang diinginkan di halaman ini, lalu klik "Langganan VVIP Sekarang". Setelah berlangganan, semua episode premium otomatis terbuka.',
+              a: 'Pilih paket VVIP yang diinginkan di halaman ini, lalu klik "Bayar & Aktifkan VVIP". Kamu akan diarahkan ke halaman pembayaran Midtrans.',
             },
             {
               q: 'Apakah saya tetap perlu koin untuk unlock episode jika sudah VVIP?',
@@ -385,7 +444,11 @@ export default function PremiumPage() {
             },
             {
               q: 'Bagaimana cara berlangganan?',
-              a: 'Pilih paket yang diinginkan, lalu klik "Langganan Sekarang". Pembayaran akan diproses secara instan.',
+              a: 'Pilih paket yang diinginkan, lalu klik tombol bayar. Kamu akan diarahkan ke halaman pembayaran Midtrans untuk memilih metode pembayaran.',
+            },
+            {
+              q: 'Metode pembayaran apa saja yang didukung?',
+              a: 'Midtrans mendukung transfer bank (BCA, Mandiri, BRI, BNI), e-wallet (GoPay, OVO, DANA, ShopeePay), dan QRIS.',
             },
             {
               q: 'Bisa dibatalkan kapan saja?',

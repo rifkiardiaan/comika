@@ -28,6 +28,7 @@ import BantuanPage from '../pages/BantuanPage'
 import KomunitasPage from '../pages/KomunitasPage'
 import BecomeCreatorPage from '../pages/BecomeCreatorPage'
 import PremiumPage from '../pages/PremiumPage'
+import DownloadPage from '../pages/DownloadPage'
 import PublicUserProfilePage from '../pages/PublicUserProfilePage'
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
       { path: 'komunitas', element: <KomunitasPage /> },
       { path: 'become-creator', element: <BecomeCreatorPage /> },
       { path: 'premium', element: <PremiumPage /> },
+      { path: 'download', element: <DownloadPage /> },
       { path: 'user/:id', element: <PublicUserProfilePage /> },
       { path: '*', element: <ComingSoonPage title="Halaman Tidak Ditemukan" /> },
     ],

@@ -10,7 +10,6 @@ use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\Wallet;
-use App\Services\EmailVerificationService;
 use App\Services\GamificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\QueryException;
 
 class AuthController extends Controller
 {
@@ -26,41 +26,42 @@ class AuthController extends Controller
      */
     public function register(RegisterRequest $request): JsonResponse
     {
-        // User + wallet dibuat dalam satu transaction (blueprint: operasi finansial wajib transactional)
-        $user = DB::transaction(function () use ($request) {
-            $user = User::create([
-                'name' => $request->name,
-                'username' => $request->username,
-                'email' => $request->email,
-                'password' => $request->password,
-                'role' => User::ROLE_READER,
-            ]);
+        try {
+            // User + wallet dibuat dalam satu transaction (blueprint: operasi finansial wajib transactional)
+            $user = DB::transaction(function () use ($request) {
+                $user = User::create([
+                    'name' => $request->name,
+                    'username' => $request->username,
+                    'email' => $request->email,
+                    'password' => $request->password,
+                    'role' => User::ROLE_READER,
+                ]);
 
-            Wallet::create([
-                'user_id' => $user->id,
-                'coin_balance' => 0,
-            ]);
+                Wallet::create([
+                    'user_id' => $user->id,
+                    'coin_balance' => 0,
+                ]);
 
-            // Muat ulang agar atribut default DB (coin_balance dsb.)
-            // ikut terbawa ke respons — model baru tanpa fresh()
-            // masih bernilai null untuk kolom yang tidak di-set.
-            return $user->fresh();
-        });
+                // Muat ulang agar atribut default DB (coin_balance dsb.)
+                // ikut terbawa ke respons — model baru tanpa fresh()
+                // masih bernilai null untuk kolom yang tidak di-set.
+                return $user->fresh();
+            });
+        } catch (QueryException $e) {
+            // Tangkap error duplikasi username/email yang mungkin lolos dari validasi
+            if ($e->errorInfo[1] == 1062) {
+                throw ValidationException::withMessages([
+                    'username' => ['Username sudah digunakan. Silakan pilih username lain.'],
+                ]);
+            }
+            throw $e;
+        }
 
         $token = $user->createToken('auth')->plainTextToken;
 
-        // Kirim email verifikasi berisi kode 6 digit + link signed (60 menit).
-        // Akun sudah dibuat — kegagalan SMTP tidak boleh menggagalkan
-        // registrasi; user bisa minta kirim ulang lewat endpoint resend.
-        try {
-            app(EmailVerificationService::class)->send($user);
-        } catch (\Throwable $e) {
-            report($e);
-        }
-
         return response()->json([
             'success' => true,
-            'message' => 'Registrasi berhasil. Periksa email untuk verifikasi akun.',
+            'message' => 'Registrasi berhasil.',
             'data' => [
                 'user' => new UserResource($user),
                 'token' => $token,

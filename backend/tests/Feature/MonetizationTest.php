@@ -9,8 +9,10 @@ use App\Models\Episode;
 use App\Models\Genre;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\MidtransService;
 use App\Services\MonetizationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 class MonetizationTest extends TestCase
@@ -30,6 +32,20 @@ class MonetizationTest extends TestCase
         $this->admin = User::factory()->admin()->create();
         $this->creator = User::factory()->creator()->create();
         $this->reader = User::factory()->reader()->create();
+
+        // Mock MidtransService untuk testing
+        $midtransMock = Mockery::mock(MidtransService::class);
+        $midtransMock->shouldReceive('createSnapToken')->andReturn([
+            'token' => 'fake-snap-token-' . time(),
+            'redirect_url' => 'https://app.sandbox.midtrans.com/snap/vtweb/fake-token',
+        ]);
+        $this->app->instance(MidtransService::class, $midtransMock);
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 
     private function token(User $user): string
@@ -165,22 +181,20 @@ class MonetizationTest extends TestCase
         $response = $this->withToken($this->token($this->reader))
             ->postJson("/api/v1/coin-packages/{$package->id}/purchase");
 
-        $response->assertStatus(201)
+        $response->assertStatus(200)
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.transaction.type', 'coin_purchase')
-            ->assertJsonPath('data.transaction.status', 'success')
-            ->assertJsonPath('data.transaction.coins', 100)
-            ->assertJsonPath('data.balance', 100);
+            ->assertJsonStructure([
+                'data' => ['snap_token', 'redirect_url', 'order_id', 'transaction_id'],
+            ]);
 
+        // Transaksi pending dibuat (belum success — menunggu Midtrans webhook)
         $this->assertDatabaseHas('transactions', [
             'user_id' => $this->reader->id,
             'type' => 'coin_purchase',
             'coins' => 100,
-            'status' => 'success',
+            'status' => 'pending',
+            'payment_method' => 'midtrans',
         ]);
-        // Kolom denormalisasi users.coin_balance ikut sinkron
-        $this->assertDatabaseHas('users', ['id' => $this->reader->id, 'coin_balance' => 100]);
-        $this->assertDatabaseHas('wallets', ['user_id' => $this->reader->id, 'coin_balance' => 100]);
     }
 
     public function test_cannot_purchase_inactive_package(): void

@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Coins,
   Crown,
+  Download,
   Gem,
   HelpCircle,
   Library,
@@ -120,7 +121,15 @@ export default function Navbar() {
         </form>
 
         {/* Auth / user */}
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
+          {/* Download App button */}
+          <Link
+            to="/download"
+            className="hidden items-center gap-1.5 rounded-lg border border-surface-800 bg-surface-900 px-2.5 py-1.5 text-xs font-medium text-surface-300 transition-colors hover:border-brand-500/50 hover:text-brand-300 sm:flex"
+          >
+            <Download size={13} />
+            <span className="hidden lg:inline">Download App</span>
+          </Link>
           {/* Mobile hamburger — paling kiri di mobile */}
           <button
             onClick={() => setMobileOpen((v) => !v)}
@@ -331,6 +340,14 @@ export default function Navbar() {
                 {label}
               </NavLink>
             ))}
+            <NavLink
+              to="/download"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-300 transition-colors hover:bg-brand-500/10 hover:text-brand-200"
+            >
+              <Download size={16} />
+              Download App
+            </NavLink>
             {user && (
               <>
                 <NavLink

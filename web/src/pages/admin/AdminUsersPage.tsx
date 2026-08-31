@@ -93,7 +93,7 @@ export default function AdminUsersPage() {
       />
 
       {/* Filters */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -106,7 +106,7 @@ export default function AdminUsersPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Cari nama, username, atau email…"
-            className="w-72 max-w-full rounded-xl border border-surface-800 bg-surface-900 py-2 pl-9 pr-4 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            className="w-full rounded-xl border border-surface-800 bg-surface-900 py-2 pl-9 pr-4 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 sm:w-72"
           />
         </form>
         <select
@@ -155,70 +155,115 @@ export default function AdminUsersPage() {
             <EmptyState message="Tidak ada pengguna yang cocok dengan filter." />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-surface-800 text-xs uppercase tracking-wide text-surface-500">
-                  <th className="px-5 py-3 font-medium">Pengguna</th>
-                  <th className="px-5 py-3 font-medium">Role</th>
-                  <th className="px-5 py-3 font-medium">Koin</th>
-                  <th className="px-5 py-3 font-medium">Komik</th>
-                  <th className="px-5 py-3 font-medium">Bergabung</th>
-                  <th className="px-5 py-3 text-right font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-800/60">
-                {users.map((u) => (
-                  <tr key={u.id} className="transition-colors hover:bg-surface-800/30">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={u.name} avatarUrl={u.avatar_url} size={36} className="rounded-full" />
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-surface-100">{u.name}</p>
-                          <p className="truncate text-xs text-surface-500">
-                            @{u.username} · {u.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <RoleBadge role={u.role} />
-                        <select
-                          value={u.role}
-                          disabled={busyId === u.id}
-                          onChange={(e) => changeRole(u, e.target.value as Role)}
-                          className="rounded-lg border border-surface-800 bg-surface-950 px-2 py-1 text-xs text-surface-300 focus:border-brand-500 focus:outline-none disabled:opacity-50"
-                          title="Ubah role"
-                        >
-                          <option value="reader">Pembaca</option>
-                          <option value="creator">Creator</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="flex items-center gap-1.5 text-surface-300">
-                        <Coins size={14} className="text-amber-400" />
-                        {u.coin_balance.toLocaleString('id-ID')}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-surface-300">{u.comics_count}</td>
-                    <td className="px-5 py-3.5 text-surface-400">{formatDate(u.created_at)}</td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={() => setDeleteTarget(u)}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
-                        title="Hapus user"
-                      >
-                        <Trash2 size={14} /> Hapus
-                      </button>
-                    </td>
+          <>
+            {/* Desktop Table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[600px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-surface-800 text-xs uppercase tracking-wide text-surface-500">
+                    <th className="px-5 py-3 font-medium">Pengguna</th>
+                    <th className="px-5 py-3 font-medium">Role</th>
+                    <th className="px-5 py-3 font-medium">Koin</th>
+                    <th className="px-5 py-3 font-medium">Komik</th>
+                    <th className="px-5 py-3 font-medium">Bergabung</th>
+                    <th className="px-5 py-3 text-right font-medium">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-surface-800/60">
+                  {users.map((u) => (
+                    <tr key={u.id} className="transition-colors hover:bg-surface-800/30">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={u.name} avatarUrl={u.avatar_url} size={36} className="rounded-full" />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-surface-100">{u.name}</p>
+                            <p className="truncate text-xs text-surface-500">
+                              @{u.username} · {u.email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <RoleBadge role={u.role} />
+                          <select
+                            value={u.role}
+                            disabled={busyId === u.id}
+                            onChange={(e) => changeRole(u, e.target.value as Role)}
+                            className="rounded-lg border border-surface-800 bg-surface-950 px-2 py-1 text-xs text-surface-300 focus:border-brand-500 focus:outline-none disabled:opacity-50"
+                            title="Ubah role"
+                          >
+                            <option value="reader">Pembaca</option>
+                            <option value="creator">Creator</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="flex items-center gap-1.5 text-surface-300">
+                          <Coins size={14} className="text-amber-400" />
+                          {u.coin_balance.toLocaleString('id-ID')}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-surface-300">{u.comics_count}</td>
+                      <td className="px-5 py-3.5 text-surface-400">{formatDate(u.created_at)}</td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          onClick={() => setDeleteTarget(u)}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                          title="Hapus user"
+                        >
+                          <Trash2 size={14} /> Hapus
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Mobile Card Layout */}
+            <div className="divide-y divide-surface-800/60 md:hidden">
+              {users.map((u) => (
+                <div key={u.id} className="p-4">
+                  <div className="mb-3 flex items-center gap-3">
+                    <Avatar name={u.name} avatarUrl={u.avatar_url} size={40} className="rounded-full" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-surface-100">{u.name}</p>
+                      <p className="truncate text-xs text-surface-500">@{u.username}</p>
+                    </div>
+                    <RoleBadge role={u.role} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="mb-1 block text-xs text-surface-500">Role</label>
+                    <select
+                      value={u.role}
+                      disabled={busyId === u.id}
+                      onChange={(e) => changeRole(u, e.target.value as Role)}
+                      className="w-full rounded-lg border border-surface-800 bg-surface-950 px-3 py-2 text-sm text-surface-300 focus:border-brand-500 focus:outline-none disabled:opacity-50"
+                    >
+                      <option value="reader">Pembaca</option>
+                      <option value="creator">Creator</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-surface-400">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1"><Coins size={12} className="text-amber-400" /> {u.coin_balance.toLocaleString('id-ID')}</span>
+                      <span>{u.comics_count} komik</span>
+                      <span>{formatDate(u.created_at)}</span>
+                    </div>
+                    <button
+                      onClick={() => setDeleteTarget(u)}
+                      className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-500/10"
+                      title="Hapus user"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

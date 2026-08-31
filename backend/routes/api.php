@@ -20,7 +20,6 @@ use App\Http\Controllers\Api\CreatorDashboardController;
 use App\Http\Controllers\Api\CreatorEarningController;
 use App\Http\Controllers\Api\CreatorProfileController;
 use App\Http\Controllers\Api\CreatorWithdrawalController;
-use App\Http\Controllers\Api\EmailVerificationController;
 use App\Http\Controllers\Api\EpisodeController;
 use App\Http\Controllers\Api\EpisodePageController;
 use App\Http\Controllers\Api\FollowController;
@@ -35,6 +34,7 @@ use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\ReadingHistoryController;
 use App\Http\Controllers\Api\UnlockController;
+use App\Http\Controllers\Api\MidtransController;
 use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
 
@@ -57,6 +57,20 @@ Route::get('/health', function () {
         'data' => [
             'version' => 'v1',
             'time' => now()->toIso8601String(),
+        ],
+    ]);
+});
+
+// Download info — publik
+Route::get('/app/version', function () {
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'latest_version' => '1.0.0',
+            'min_version' => '1.0.0',
+            'download_url' => url('/downloads/comika.apk'),
+            'release_notes' => 'Versi pertama COMIKA Mobile!',
+            'released_at' => now()->toIso8601String(),
         ],
     ]);
 });
@@ -85,14 +99,6 @@ Route::prefix('auth')->group(function () {
         Route::patch('me/profile', [AuthController::class, 'updateProfile']);
         Route::delete('me/avatar', [AuthController::class, 'deleteAvatar']);
     });
-
-    // Kirim ulang email verifikasi — butuh login (anti spam throttled)
-    Route::post('email/verification-notification', [EmailVerificationController::class, 'resend'])
-        ->middleware(['auth:sanctum', 'throttle:3,1']);
-
-    // Verifikasi email dengan kode 6 digit — butuh login (anti brute force throttled)
-    Route::post('email/verify-code', [EmailVerificationController::class, 'verifyCode'])
-        ->middleware(['auth:sanctum', 'throttle:10,1']);
 
     // Lupa / atur ulang password — publik
     Route::post('forgot-password', [PasswordResetController::class, 'sendResetLink'])
@@ -262,6 +268,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('episodes/{episode}/unlock', [UnlockController::class, 'store']);
 });
 
+// ============================================================
+// Midtrans Payment Gateway
+// ============================================================
+// Webhook notification dari Midtrans — TANPA autentikasi (diverifikasi langsung)
+Route::post('midtrans/notification', [MidtransController::class, 'notification']);
+
+// Snap token creation — butuh login
+Route::middleware('auth:sanctum')->prefix('midtrans')->group(function () {
+    Route::get('status/{orderId}', [MidtransController::class, 'status']);
+});
+
 // Earning & withdrawal creator — butuh login + role creator
 Route::middleware(['auth:sanctum', 'creator'])->prefix('creator')->group(function () {
     Route::get('earnings', [CreatorEarningController::class, 'index']);
@@ -281,11 +298,14 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::patch('users/{user}/role', [AdminUserController::class, 'updateRole']);
     Route::delete('users/{user}', [AdminUserController::class, 'destroy']);
 
-    // VVIP management
+    // Subscription management (Premium & VVIP)
     Route::get('subscribers', [AdminUserController::class, 'subscribers']);
     Route::get('subscriber-stats', [AdminUserController::class, 'subscriberStats']);
     Route::post('users/{user}/grant-vvip', [AdminUserController::class, 'grantVvip']);
     Route::post('users/{user}/revoke-vvip', [AdminUserController::class, 'revokeVvip']);
+    Route::post('users/{user}/grant-premium', [AdminUserController::class, 'grantPremium']);
+    Route::post('users/{user}/revoke-premium', [AdminUserController::class, 'revokePremium']);
+    Route::post('users/{user}/upgrade-to-vvip', [AdminUserController::class, 'upgradeToVvip']);
 
     // Manajemen creator
     Route::get('creators', [AdminCreatorController::class, 'index']);

@@ -5,7 +5,7 @@ class ApiConstants {
   /// Base URL API — ganti saat build production / real device.
   /// - Emulator Android: http://10.0.2.2:8000
   /// - Browser/desktop:  http://127.0.0.1:8000
-  static const String baseUrl = 'http://10.0.2.2:8000/api/v1';
+  static const String baseUrl = 'https://comika.free.nf/api/v1';
 
   /// Host API (tanpa /api/v1) — dipakai untuk membangun URL file storage.
   static String get apiOrigin {

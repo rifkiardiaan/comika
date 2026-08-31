@@ -27,6 +27,7 @@ export default function Footer() {
           </div>
           <div>
             <ul className="mt-3 space-y-2 text-sm text-surface-400">
+              <li><Link to="/download" className="transition-colors hover:text-brand-300">Download App</Link></li>
               <li><Link to="/bantuan" className="transition-colors hover:text-brand-300">Bantuan</Link></li>
               <li><Link to="/komunitas" className="transition-colors hover:text-brand-300">Komunitas</Link></li>
               <li><Link to="/login" className="transition-colors hover:text-brand-300">Masuk</Link></li>

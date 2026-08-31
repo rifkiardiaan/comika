@@ -62,6 +62,8 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors('password');
     }
 
+
+
     public function test_register_returns_default_coin_balance(): void
     {
         // Default DB (0) harus terbawa di respons — bukan null — agar
@@ -123,6 +125,7 @@ class AuthTest extends TestCase
         $user = User::factory()->create([
             'email' => 'budi@example.com',
             'password' => 'password123',
+            'email_verified_at' => now(),
         ]);
 
         $response = $this->postJson('/api/v1/auth/login', [
@@ -138,11 +141,30 @@ class AuthTest extends TestCase
         $this->assertNotNull($user->tokens()->first());
     }
 
+    public function test_login_accepts_unverified_email(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'budi@example.com',
+            'password' => 'password123',
+            'email_verified_at' => null,
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'budi@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.email', 'budi@example.com');
+    }
+
     public function test_login_rejects_invalid_credentials(): void
     {
         User::factory()->create([
             'email' => 'budi@example.com',
             'password' => 'password123',
+            'email_verified_at' => now(),
         ]);
 
         $response = $this->postJson('/api/v1/auth/login', [
@@ -160,6 +182,7 @@ class AuthTest extends TestCase
         User::factory()->create([
             'email' => 'budi@example.com',
             'password' => 'password123',
+            'email_verified_at' => now(),
         ]);
 
         // Login memakai email kapital harus tetap sukses (case-insensitive)

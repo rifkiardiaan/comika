@@ -37,8 +37,14 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:100'],
-            'username' => ['required', 'string', 'min:3', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->whereNull('deleted_at')],
-            'email' => ['required', 'string', 'email', 'max:255', 'lowercase', Rule::unique('users', 'email')->whereNull('deleted_at')],
+            'username' => [
+                'required', 'string', 'min:3', 'max:50', 'alpha_dash',
+                Rule::unique('users', 'username'),
+            ],
+            'email' => [
+                'required', 'string', 'email', 'max:255', 'lowercase',
+                Rule::unique('users', 'email'),
+            ],
             'password' => ['required', 'confirmed', Password::min(8)],
         ];
     }
@@ -46,7 +52,9 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'username.unique' => 'Username sudah digunakan. Silakan pilih username lain.',
             'username.alpha_dash' => 'Username hanya boleh berisi huruf, angka, tanda hubung, dan underscore.',
+            'email.unique' => 'Email sudah terdaftar. Gunakan email lain atau login jika sudah punya akun.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
         ];
     }

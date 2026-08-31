@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   AlertCircle,
   Banknote,
   CheckCircle2,
   Coins,
+  CreditCard,
   Landmark,
   Loader2,
   Lock,
@@ -18,6 +19,7 @@ import Pagination from '../components/admin/Pagination'
 import { Badge } from '../components/admin/Badge'
 import { auth } from '../services/auth'
 import { monetization } from '../services/monetization'
+import { loadSnapSdk, openSnapPayment, midtrans } from '../services/midtrans'
 import { getApiErrorMessage } from '../utils/errors'
 import { formatDate, formatRupiah } from '../utils/format'
 import type { CoinPackage, EarningsSummary, Transaction, TransactionStatus, TransactionType, WalletSummary } from '../types'
@@ -36,7 +38,12 @@ const typeLabel: Record<TransactionType, string> = {
   withdrawal: 'Penarikan',
 }
 
+// Client key dari .env (sandbox untuk development)
+const MIDTRANS_CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || ''
+const MIDTRANS_IS_PRODUCTION = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true'
+
 export default function WalletPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [user] = useState(() => auth.getStoredUser())
   const [wallet, setWallet] = useState<WalletSummary | null>(null)
   const [packages, setPackages] = useState<CoinPackage[]>([])
@@ -56,6 +63,32 @@ export default function WalletPage() {
   const [transferLoading, setTransferLoading] = useState(false)
   const [transferError, setTransferError] = useState('')
   const [transferNotice, setTransferNotice] = useState('')
+
+  // Load Midtrans Snap SDK
+  useEffect(() => {
+    if (MIDTRANS_CLIENT_KEY) {
+      loadSnapSdk(MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION).catch(() => {
+        console.warn('Gagal memuat Midtrans Snap SDK')
+      })
+    }
+  }, [])
+
+  // Handle payment result dari URL params
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment')
+    if (paymentStatus === 'success') {
+      setNotice('Pembayaran berhasil! Koin telah ditambahkan ke dompet Anda.')
+      fetchAll()
+      setSearchParams({}, { replace: true })
+    } else if (paymentStatus === 'pending') {
+      setNotice('Pembayaran sedang diproses. Koin akan ditambahkan setelah pembayaran dikonfirmasi.')
+      fetchAll()
+      setSearchParams({}, { replace: true })
+    } else if (paymentStatus === 'error') {
+      setError('Pembayaran gagal atau dibatalkan.')
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -124,10 +157,34 @@ export default function WalletPage() {
     setPurchasingId(pkg.id)
     setError('')
     setNotice('')
+
     try {
-      await monetization.purchase(pkg.id)
-      setNotice(`Pembelian berhasil! ${pkg.coins.toLocaleString('id-ID')} koin telah ditambahkan ke dompet Anda.`)
-      await fetchAll()
+      // Dapatkan Snap Token dari backend
+      const result = await midtrans.getCoinPackageSnapToken(pkg.id)
+
+      if (!MIDTRANS_CLIENT_KEY) {
+        // Fallback jika Snap SDK belum dikonfigurasi
+        setError('Midtrans belum dikonfigurasi. Hubungi admin.')
+        setPurchasingId(null)
+        return
+      }
+
+      // Buka Midtrans Snap payment popup
+      openSnapPayment(result.snap_token, {
+        onSuccess: async () => {
+          setNotice(`Pembayaran berhasil! ${pkg.coins.toLocaleString('id-ID')} koin telah ditambahkan ke dompet Anda.`)
+          await fetchAll()
+        },
+        onPending: () => {
+          setNotice('Pembayaran sedang diproses. Koin akan ditambahkan setelah pembayaran dikonfirmasi.')
+        },
+        onError: () => {
+          setError('Pembayaran gagal. Silakan coba lagi.')
+        },
+        onClose: () => {
+          // User tutup popup tanpa bayar — tidak perlu action
+        },
+      })
     } catch (err) {
       setError(getApiErrorMessage(err, 'Gagal membeli koin.'))
     } finally {
@@ -156,7 +213,7 @@ export default function WalletPage() {
     try {
       const result = await monetization.transferToWallet(amount)
       setTransferNotice(
-        `Berhasil transfer ${result.coins_added.toLocaleString('id-ID')} koin dari saldo affiliate ke dompet.`
+        `Berhasil transfer ${result.coins_added.toLocaleString('id-ID')} koin dari saldo affiliate ke dompet.`,
       )
       setTransferAmount('')
       await fetchAll()
@@ -233,9 +290,14 @@ export default function WalletPage() {
 
       {/* ====== Top-Up Koin ====== */}
       <section className="mt-10">
-        <h2 className="font-display text-xl font-bold text-surface-50">Top-Up Koin</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="font-display text-xl font-bold text-surface-50">Top-Up Koin</h2>
+          <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+            <CreditCard size={10} /> Via Midtrans
+          </span>
+        </div>
         <p className="mt-1 text-sm text-surface-400">
-          Pilih paket koin yang ingin dibeli. Pembayaran diproses instan.
+          Pilih paket koin yang ingin dibeli. Pembayaran diproses melalui Midtrans (transfer bank, e-wallet, dll).
         </p>
 
         {loading && !packages.length ? (
@@ -277,7 +339,7 @@ export default function WalletPage() {
                     </>
                   ) : (
                     <>
-                      <Coins size={15} /> Beli Sekarang
+                      <CreditCard size={15} /> Bayar Sekarang
                     </>
                   )}
                 </button>

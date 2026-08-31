@@ -213,6 +213,132 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Grant Premium status to a user (admin action).
+     * Sets Premium for the specified number of days from now.
+     */
+    public function grantPremium(Request $request, User $user): JsonResponse
+    {
+        $request->validate([
+            'days' => 'required|integer|min:1|max:3650',
+        ]);
+
+        $days = $request->integer('days');
+
+        DB::beginTransaction();
+        try {
+            $expiresAt = now()->addDays($days);
+
+            // If user already has active Premium, extend from current expiry
+            if ($user->is_premium && ! $user->is_vvip && $user->premium_until && $user->premium_until->isFuture()) {
+                $expiresAt = $user->premium_until->addDays($days);
+            }
+
+            $user->update([
+                'is_premium' => true,
+                'premium_until' => $expiresAt,
+            ]);
+
+            // Also create a subscription record
+            Subscription::create([
+                'user_id' => $user->id,
+                'plan' => Subscription::PLAN_MONTHLY,
+                'amount' => 0,
+                'payment_method' => 'admin_grant',
+                'payment_status' => Subscription::STATUS_PAID,
+                'starts_at' => now(),
+                'expires_at' => $expiresAt,
+                'paid_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Premium berhasil diberikan ke {$user->name} selama {$days} hari.",
+                'data' => new AdminUserResource($user->fresh()->loadCount('comics')),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memberikan Premium.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Revoke Premium status from a user (admin action).
+     */
+    public function revokePremium(Request $request, User $user): JsonResponse
+    {
+        $user->update([
+            'is_premium' => false,
+            'premium_until' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Premium berhasil dicabut dari {$user->name}.",
+            'data' => new AdminUserResource($user->fresh()->loadCount('comics')),
+        ]);
+    }
+
+    /**
+     * Upgrade user dari Premium ke VVIP (admin action).
+     */
+    public function upgradeToVvip(Request $request, User $user): JsonResponse
+    {
+        $request->validate([
+            'days' => 'required|integer|min:1|max:3650',
+        ]);
+
+        $days = $request->integer('days');
+
+        DB::beginTransaction();
+        try {
+            $expiresAt = now()->addDays($days);
+
+            // If user already has active VVIP, extend from current expiry
+            if ($user->is_vvip && $user->vvip_until && $user->vvip_until->isFuture()) {
+                $expiresAt = $user->vvip_until->addDays($days);
+            }
+
+            $user->update([
+                'is_premium' => true,
+                'premium_until' => $expiresAt,
+                'is_vvip' => true,
+                'vvip_until' => $expiresAt,
+            ]);
+
+            // Create subscription record
+            Subscription::create([
+                'user_id' => $user->id,
+                'plan' => Subscription::PLAN_VVIP_MONTHLY,
+                'amount' => 0,
+                'payment_method' => 'admin_grant',
+                'payment_status' => Subscription::STATUS_PAID,
+                'starts_at' => now(),
+                'expires_at' => $expiresAt,
+                'paid_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "VVIP berhasil diberikan ke {$user->name} selama {$days} hari.",
+                'data' => new AdminUserResource($user->fresh()->loadCount('comics')),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memberikan VVIP.',
+            ], 500);
+        }
+    }
+
+    /**
      * Stats for VVIP & Premium subscribers.
      */
     public function subscriberStats(): JsonResponse

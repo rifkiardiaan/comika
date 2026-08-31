@@ -26,7 +26,7 @@ export default function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={loading ? undefined : onCancel} />
-      <div className="relative w-full max-w-md animate-slide-up rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-2xl shadow-black/60">
+      <div className="relative w-full max-w-md animate-slide-up rounded-2xl border border-surface-800 bg-surface-900 p-5 shadow-2xl shadow-black/60 sm:p-6">
         <div className="flex items-start gap-4">
           <span
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
@@ -35,23 +35,23 @@ export default function ConfirmDialog({
           >
             <AlertTriangle size={20} />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="font-display text-lg font-bold text-surface-50">{title}</h3>
             <p className="mt-1 text-sm leading-relaxed text-surface-400">{description}</p>
           </div>
         </div>
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="rounded-xl border border-surface-700 px-4 py-2 text-sm font-medium text-surface-300 transition-colors hover:bg-surface-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium text-surface-300 transition-colors hover:bg-surface-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             Batal
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto ${
               danger
                 ? 'bg-gradient-to-r from-red-600 to-rose-600 shadow-red-600/25'
                 : 'bg-gradient-to-r from-brand-600 to-pink-600 shadow-brand-600/25'

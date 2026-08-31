@@ -200,85 +200,139 @@ export default function CreatorComicsPage() {
             <EmptyState message="Belum ada komik. Klik Komik Baru untuk mulai menerbitkan karya Anda." />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-surface-800 text-xs uppercase tracking-wide text-surface-500">
-                  <th className="px-5 py-3 font-medium">Komik</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 text-center font-medium">Eps</th>
-                  <th className="px-5 py-3 text-center font-medium">Rating</th>
-                  <th className="px-5 py-3 text-center font-medium">Pengikut</th>
-                  <th className="px-5 py-3 text-right font-medium">Views</th>
-                  <th className="px-5 py-3 text-right font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-800/60">
-                {comics.map((c) => (
-                  <tr key={c.id} className="transition-colors hover:bg-surface-800/30">
-                    <td className="px-5 py-3.5">
-                      <Link to={`/creator/comics/${c.id}`} className="flex items-center gap-3">
-                        <span
-                          className="flex h-14 w-10 shrink-0 items-center justify-center rounded-lg text-lg"
-                          style={{ background: coverStyle(coverKeyOf(c.id)) }}
-                        >
-                          {coverEmoji(coverKeyOf(c.id))}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="max-w-56 truncate font-medium text-surface-100 transition-colors hover:text-brand-300">
-                            {c.title}
-                          </p>
-                          <p className="text-xs text-surface-500">
-                            {c.published_episodes_count} terbit · {c.draft_episodes_count} draft · {c.comments_count} komentar
-                          </p>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge status={c.status} />
-                    </td>
-                    <td className="px-5 py-3.5 text-center text-surface-300">{c.episode_count}</td>
-                    <td className="px-5 py-3.5 text-center">
-                      <span className="flex items-center justify-center gap-1 text-amber-300">
-                        <Star size={13} fill="currentColor" /> {c.rating_avg.toFixed(1)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-center text-surface-300">{formatNumber(c.followers_count)}</td>
-                    <td className="px-5 py-3.5 text-right">
-                      <span className="flex items-center justify-end gap-1.5 text-surface-300">
-                        <Eye size={13} className="text-emerald-400" /> {formatNumber(c.view_count)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link
-                          to={`/creator/comics/${c.id}/analytics`}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-300 transition-colors hover:bg-brand-500/10"
-                          title="Analitik"
-                        >
-                          <Star size={14} />
-                        </Link>
-                        <button
-                          onClick={() => openEdit(c)}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-300 transition-colors hover:bg-sky-500/10"
-                          title="Edit"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(c)}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
-                          title="Hapus"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            {/* Desktop Table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[700px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-surface-800 text-xs uppercase tracking-wide text-surface-500">
+                    <th className="px-5 py-3 font-medium">Komik</th>
+                    <th className="px-5 py-3 font-medium">Status</th>
+                    <th className="px-5 py-3 text-center font-medium">Eps</th>
+                    <th className="px-5 py-3 text-center font-medium">Rating</th>
+                    <th className="px-5 py-3 text-center font-medium">Pengikut</th>
+                    <th className="px-5 py-3 text-right font-medium">Views</th>
+                    <th className="px-5 py-3 text-right font-medium">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-surface-800/60">
+                  {comics.map((c) => (
+                    <tr key={c.id} className="transition-colors hover:bg-surface-800/30">
+                      <td className="px-5 py-3.5">
+                        <Link to={`/creator/comics/${c.id}`} className="flex items-center gap-3">
+                          <span
+                            className="flex h-14 w-10 shrink-0 items-center justify-center rounded-lg text-lg"
+                            style={{ background: coverStyle(coverKeyOf(c.id)) }}
+                          >
+                            {coverEmoji(coverKeyOf(c.id))}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="max-w-56 truncate font-medium text-surface-100 transition-colors hover:text-brand-300">
+                              {c.title}
+                            </p>
+                            <p className="text-xs text-surface-500">
+                              {c.published_episodes_count} terbit · {c.draft_episodes_count} draft · {c.comments_count} komentar
+                            </p>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <StatusBadge status={c.status} />
+                      </td>
+                      <td className="px-5 py-3.5 text-center text-surface-300">{c.episode_count}</td>
+                      <td className="px-5 py-3.5 text-center">
+                        <span className="flex items-center justify-center gap-1 text-amber-300">
+                          <Star size={13} fill="currentColor" /> {c.rating_avg.toFixed(1)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-center text-surface-300">{formatNumber(c.followers_count)}</td>
+                      <td className="px-5 py-3.5 text-right">
+                        <span className="flex items-center justify-end gap-1.5 text-surface-300">
+                          <Eye size={13} className="text-emerald-400" /> {formatNumber(c.view_count)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <Link
+                            to={`/creator/comics/${c.id}/analytics`}
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-300 transition-colors hover:bg-brand-500/10"
+                            title="Analitik"
+                          >
+                            <Star size={14} />
+                          </Link>
+                          <button
+                            onClick={() => openEdit(c)}
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-300 transition-colors hover:bg-sky-500/10"
+                            title="Edit"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(c)}
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                            title="Hapus"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Mobile Card Layout */}
+            <div className="divide-y divide-surface-800/60 md:hidden">
+              {comics.map((c) => (
+                <div key={c.id} className="p-4">
+                  <Link to={`/creator/comics/${c.id}`} className="mb-3 flex items-center gap-3">
+                    <span
+                      className="flex h-14 w-10 shrink-0 items-center justify-center rounded-lg text-lg"
+                      style={{ background: coverStyle(coverKeyOf(c.id)) }}
+                    >
+                      {coverEmoji(coverKeyOf(c.id))}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-surface-100 transition-colors hover:text-brand-300">
+                        {c.title}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <StatusBadge status={c.status} />
+                        <span className="text-xs text-surface-500">{c.episode_count} eps</span>
+                      </div>
+                    </div>
+                  </Link>
+                  <div className="flex items-center justify-between text-xs text-surface-400">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1"><Star size={12} className="text-amber-300" fill="currentColor" /> {c.rating_avg.toFixed(1)}</span>
+                      <span className="flex items-center gap-1"><Eye size={12} className="text-emerald-400" /> {formatNumber(c.view_count)}</span>
+                      <span>{formatNumber(c.followers_count)} pengikut</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Link
+                        to={`/creator/comics/${c.id}/analytics`}
+                        className="rounded-lg p-2 text-brand-300 transition-colors hover:bg-brand-500/10"
+                      >
+                        <Star size={16} />
+                      </Link>
+                      <button
+                        onClick={() => openEdit(c)}
+                        className="rounded-lg p-2 text-sky-300 transition-colors hover:bg-sky-500/10"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(c)}
+                        className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-500/10"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -288,8 +342,8 @@ export default function CreatorComicsPage() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={submitting ? undefined : () => setModal(null)} />
-          <div className="relative max-h-[90vh] w-full max-w-lg animate-slide-up overflow-y-auto rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-2xl shadow-black/60">
-            <div className="flex items-start justify-between gap-4">
+          <div className="relative max-h-[90vh] w-full max-w-lg animate-slide-up overflow-y-auto rounded-2xl border border-surface-800 bg-surface-900 p-5 sm:p-6 shadow-2xl shadow-black/60">
+            <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-4 flex items-start justify-between gap-4 border-b border-surface-800 bg-surface-900 px-5 py-4 sm:-mx-6 sm:px-6">
               <div>
                 <h3 className="flex items-center gap-2 font-display text-lg font-bold text-surface-50">
                   {modal === 'edit' ? <Pencil size={18} className="text-sky-300" /> : <FilePlus2 size={18} className="text-brand-300" />}
@@ -302,10 +356,10 @@ export default function CreatorComicsPage() {
               <button
                 onClick={() => setModal(null)}
                 disabled={submitting}
-                className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-50"
+                className="sticky top-4 z-20 rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-50"
                 aria-label="Tutup"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
