@@ -265,6 +265,15 @@ class MidtransController extends Controller
                     'amount' => $transaction->amount,
                 ]
             );
+
+            // Riwayat aktivitas: pembelian koin berhasil
+            app(\App\Services\ActivityLogService::class)->log(
+                $user,
+                \App\Models\ActivityLog::ACTION_COIN_PURCHASE,
+                $user->name . ' membeli ' . $transaction->coins . ' koin (Rp ' . number_format($transaction->amount, 0, ',', '.') . ')',
+                $transaction,
+                ['order_id' => $orderId]
+            );
         }
     }
 
@@ -314,6 +323,16 @@ class MidtransController extends Controller
 
             // Update paid_at
             $subscription->update(['paid_at' => now()]);
+
+            // Riwayat aktivitas: langganan premium/VVIP aktif
+            $isVvipPlan = in_array($subscription->plan, [Subscription::PLAN_VVIP_MONTHLY, Subscription::PLAN_VVIP_YEARLY], true);
+            app(\App\Services\ActivityLogService::class)->log(
+                $user,
+                \App\Models\ActivityLog::ACTION_SUBSCRIPTION,
+                $user->name . ' mengaktifkan langganan ' . ($isVvipPlan ? 'VVIP' : 'Premium') . ' (' . $subscription->plan . ')',
+                $subscription,
+                ['order_id' => $orderId, 'plan' => $subscription->plan]
+            );
         }
     }
 
@@ -329,5 +348,141 @@ class MidtransController extends Controller
             'success' => true,
             'data' => $result,
         ]);
+    }
+
+    /**
+     * Verifikasi & proses pembayaran tertunda — dipanggil dari frontend
+     * setelah Snap SDK onSuccess/onPending untuk memastikan transaksi
+     * diproses meskipun webhook belum sampai.
+     *
+     * POST /api/v1/midtrans/verify-payment
+     * Body: { order_id: string }
+     */
+    public function verifyPayment(Request $request): JsonResponse
+    {
+        $request->validate([
+            'order_id' => 'required|string',
+        ]);
+
+        $orderId = $request->input('order_id');
+
+        // ── Handle subscription payments (SUB-* prefix) ──
+        if (str_starts_with($orderId, 'SUB-')) {
+            return $this->verifySubscriptionPayment($orderId);
+        }
+
+        // ── Handle coin package payments (COIN-* prefix) ──
+        $transaction = Transaction::where('reference', $orderId)
+            ->where('status', Transaction::STATUS_PENDING)
+            ->first();
+
+        if (! $transaction) {
+            $existing = Transaction::where('reference', $orderId)->first();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => $existing?->status ?? 'not_found',
+                    'coins_credited' => $existing?->status === Transaction::STATUS_SUCCESS,
+                ],
+            ]);
+        }
+
+        try {
+            $verified = $this->midtransService->verifyNotification([
+                'order_id' => $orderId,
+            ]);
+            $status = $this->midtransService->mapStatus(
+                $verified['transaction_status'],
+                $verified['fraud_status']
+            );
+
+            Log::info('Midtrans Verify Payment', [
+                'order_id' => $orderId,
+                'verified_status' => $verified['transaction_status'],
+                'mapped_status' => $status,
+            ]);
+
+            $this->handleCoinPackageNotification($orderId, $status, $verified);
+            $transaction->refresh();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => $transaction->status,
+                    'coins_credited' => $transaction->status === Transaction::STATUS_SUCCESS,
+                    'coins' => $transaction->coins,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Midtrans Verify Payment Error: ' . $e->getMessage(), [
+                'order_id' => $orderId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memverifikasi pembayaran.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Verifikasi pembayaran langganan (SUB-* order IDs).
+     */
+    private function verifySubscriptionPayment(string $orderId): JsonResponse
+    {
+        // Cari subscription berdasarkan payment_method yang berisi order_id
+        $subscription = Subscription::where('payment_method', 'like', '%'.$orderId.'%')
+            ->where('payment_status', Subscription::STATUS_PENDING)
+            ->first();
+
+        if (! $subscription) {
+            // Cek apakah sudah diproses
+            $existing = Subscription::where('payment_method', 'like', '%'.$orderId.'%')->first();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => $existing?->payment_status ?? 'not_found',
+                    'activated' => $existing?->payment_status === Subscription::STATUS_PAID,
+                ],
+            ]);
+        }
+
+        try {
+            $verified = $this->midtransService->verifyNotification([
+                'order_id' => $orderId,
+            ]);
+            $status = $this->midtransService->mapStatus(
+                $verified['transaction_status'],
+                $verified['fraud_status']
+            );
+
+            Log::info('Midtrans Verify Subscription', [
+                'order_id' => $orderId,
+                'verified_status' => $verified['transaction_status'],
+                'mapped_status' => $status,
+            ]);
+
+            $this->handleSubscriptionNotification($orderId, $status, $verified);
+            $subscription->refresh();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => $subscription->payment_status,
+                    'activated' => $subscription->payment_status === Subscription::STATUS_PAID,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Midtrans Verify Subscription Error: ' . $e->getMessage(), [
+                'order_id' => $orderId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memverifikasi pembayaran langganan.',
+            ], 500);
+        }
     }
 }

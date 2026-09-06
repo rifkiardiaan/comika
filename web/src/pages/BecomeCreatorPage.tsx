@@ -24,7 +24,8 @@ const benefits = [
 ]
 
 export default function BecomeCreatorPage() {
-  const user = auth.getStoredUser()
+  // Stabilkan referensi user agar tidak berubah tiap render
+  const [user] = useState(() => auth.getStoredUser())
   const navigate = useNavigate()
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error' | 'already_creator' | 'already_applied' | 'approved' | 'rejected' | 'loading'>('loading')
   const [formData, setFormData] = useState({ portfolio_url: '', bio: '', reason: '', experience: '' })
@@ -303,7 +304,7 @@ export default function BecomeCreatorPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-surface-200">Link Portfolio (opsional)</label>
+            <label className="mb-1.5 block text-sm font-medium text-surface-200">Link Account Instagram / Portfolio </label>
             <input type="url" value={formData.portfolio_url} onChange={(e) => setFormData({ ...formData, portfolio_url: e.target.value })} placeholder="https://instagram.com/karyakamu atau link portfolio lainnya" className="w-full rounded-lg border border-surface-700 bg-surface-800 px-3 py-2.5 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
           </div>
         </div>

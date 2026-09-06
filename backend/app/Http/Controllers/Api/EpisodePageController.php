@@ -44,6 +44,14 @@ class EpisodePageController extends Controller
     {
         $this->authorize('uploadPages', $episode);
 
+        // Izin upload dinonaktifkan admin → tidak bisa mengunggah halaman baru
+        if (! $request->user()->canUpload()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Izin upload komik Anda dinonaktifkan oleh admin. Hubungi admin untuk mengaktifkannya kembali.',
+            ], 403);
+        }
+
         $pages = $this->episodeService->uploadPages(
             $episode,
             $request->file('pages'),

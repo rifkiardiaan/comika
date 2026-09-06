@@ -31,6 +31,7 @@ class UserResource extends JsonResource
             'is_banned' => $this->is_banned ?? false,
             'is_permanently_banned' => $this->is_permanently_banned ?? false,
             'ban_reason' => $this->ban_reason ?? null,
+            'can_upload' => (bool) ($this->can_upload ?? true),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

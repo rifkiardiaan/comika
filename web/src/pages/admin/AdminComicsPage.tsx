@@ -7,25 +7,20 @@ import {
   ChevronRight,
   Eye,
   FileText,
-  Heart,
-  ImageOff,
   Loader2,
   Search,
   ShieldAlert,
-  ShieldCheck,
   Star,
   Trash2,
-  Unlock,
   Upload,
   XCircle,
 } from 'lucide-react'
 import PageHeader from '../../components/admin/PageHeader'
-import { StatusBadge } from '../../components/admin/Badge'
 import Pagination from '../../components/admin/Pagination'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import EmptyState from '../../components/admin/EmptyState'
 import { admin, getApiErrorMessage } from '../../services/admin'
-import type { AdminComic, ComicStatus, VerificationStatus } from '../../types'
+import type { AdminComic } from '../../types'
 import { coverEmoji, coverKeyOf, coverStyle } from '../../data/mock'
 import { formatDate, formatNumber } from '../../utils/format'
 
@@ -43,7 +38,7 @@ interface AdminEpisode {
   id: number
   number: number
   title: string
-  status: 'draft' | 'published'
+  status: 'draft' | 'pending' | 'published' | string
   is_premium: boolean
   price_coin: number
   view_count: number
@@ -51,6 +46,19 @@ interface AdminEpisode {
   page_count: number
   comments_count: number
   published_at: string | null
+  rejection_reason?: string | null
+}
+
+/**
+ * Normalisasi status episode utk tampilan admin.
+ * Hanya 'published' asli yang hijau/Terbit; status lain (termasuk nilai
+ * tak dikenal dari DB lama) dianggap belum terbit agar episode yang baru
+ * dikirim creator tidak tampak langsung hijau.
+ */
+function adminEpisodeStatus(status: string): 'draft' | 'pending' | 'published' {
+  if (status === 'published') return 'published'
+  if (status === 'draft') return 'draft'
+  return 'pending'
 }
 
 export default function AdminComicsPage() {
@@ -62,7 +70,7 @@ export default function AdminComicsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [busyId, setBusyId] = useState<number | null>(null)
+
   const [deleteTarget, setDeleteTarget] = useState<AdminComic | null>(null)
   const [coverErrors, setCoverErrors] = useState<Set<number>>(new Set())
   const [deleting, setDeleting] = useState(false)
@@ -71,13 +79,22 @@ export default function AdminComicsPage() {
   const [publishBusyId, setPublishBusyId] = useState<number | null>(null)
   const [blockBusyId, setBlockBusyId] = useState<number | null>(null)
   const [banBusyId, setBanBusyId] = useState<number | null>(null)
-  const [unbanBusyId, setUnbanBusyId] = useState<number | null>(null)
 
-  // Ban dialog
+
+  // Blokir komik dialog
+  const [blockTarget, setBlockTarget] = useState<AdminComic | null>(null)
+  const [blockReason, setBlockReason] = useState('')
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false)
+
+  // Ban permanen dialog
   const [banTarget, setBanTarget] = useState<AdminComic | null>(null)
-  const [banType, setBanType] = useState<'ban' | 'permanent_ban'>('ban')
   const [banReason, setBanReason] = useState('')
   const [banDialogOpen, setBanDialogOpen] = useState(false)
+
+  // Tolak komik dialog
+  const [rejectTarget, setRejectTarget] = useState<AdminComic | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectBusyId, setRejectBusyId] = useState<number | null>(null)
 
   // Inline episodes
   const [expandedComicId, setExpandedComicId] = useState<number | null>(null)
@@ -90,6 +107,15 @@ export default function AdminComicsPage() {
   const [episodePages, setEpisodePages] = useState<Array<{ id: number; page_number: number; image_url: string }>>([])
   const [pagesLoading, setPagesLoading] = useState(false)
 
+  // Tolak episode dialog
+  const [rejectEpTarget, setRejectEpTarget] = useState<{ ep: AdminEpisode; comicId: number } | null>(null)
+  const [rejectEpReason, setRejectEpReason] = useState('')
+  const [rejectEpBusyId, setRejectEpBusyId] = useState<number | null>(null)
+
+  // Hapus episode dialog
+  const [deleteEpTarget, setDeleteEpTarget] = useState<{ ep: AdminEpisode; comicId: number } | null>(null)
+  const [deleteEpBusy, setDeleteEpBusy] = useState(false)
+
   const fetchComics = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -99,7 +125,7 @@ export default function AdminComicsPage() {
       if (tab === 'pending') params.verification = 'pending'
       else if (tab === 'approved') params.verification = 'approved'
       else if (tab === 'rejected') params.verification = 'rejected'
-      else if (tab === 'blocked') params.status = 'hiatus'
+      else if (tab === 'blocked') params.verification = 'blocked'
 
       const res = await admin.comics(params)
       setComics(res.data)
@@ -121,7 +147,7 @@ export default function AdminComicsPage() {
     setNotice('')
     try {
       await admin.publishComic(comic.id)
-      setNotice(`Komik "${comic.title}" berhasil dipublikasikan.`)
+      setNotice(`Komik "${comic.title}" disetujui & diterbitkan. Setujui tiap episode yang ingin ditayangkan pada daftar di bawah.`)
       await fetchComics()
     } catch (err) {
       setError(getApiErrorMessage(err, 'Gagal mempublikasikan.'))
@@ -130,65 +156,76 @@ export default function AdminComicsPage() {
     }
   }
 
-  // Block comic
-  const blockComic = async (comic: AdminComic) => {
-    setBlockBusyId(comic.id)
+  // Reject comic — tolak dengan alasan (creator bisa perbaiki & ajukan ulang)
+  const rejectComic = async () => {
+    if (!rejectTarget) return
+    setRejectBusyId(rejectTarget.id)
     setNotice('')
     try {
-      await admin.blockComic(comic.id)
-      setNotice(`Komik "${comic.title}" berhasil diblokir.`)
+      await admin.verifyComic(rejectTarget.id, {
+        verification_status: 'rejected',
+        rejection_reason: rejectReason.trim() || undefined,
+      })
+      setNotice(`Komik "${rejectTarget.title}" ditolak.`)
+      setRejectTarget(null)
+      setRejectReason('')
       await fetchComics()
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Gagal memblokir.'))
+      setError(getApiErrorMessage(err, 'Gagal menolak komik.'))
+    } finally {
+      setRejectBusyId(null)
+    }
+  }
+
+  // Open block-comic dialog
+  const openBlockDialog = (comic: AdminComic) => {
+    setBlockTarget(comic)
+    setBlockReason('')
+    setBlockDialogOpen(true)
+  }
+
+  // Block comic — komik tidak disetujui & masuk page Diblokir.
+  // Creator tetap bisa login tapi izin upload komiknya dinonaktifkan.
+  const confirmBlock = async () => {
+    if (!blockTarget) return
+    setBlockBusyId(blockTarget.id)
+    setNotice('')
+    try {
+      await admin.blockComic(blockTarget.id, blockReason.trim() || undefined)
+      setNotice(`Komik "${blockTarget.title}" diblokir & masuk page Diblokir. Izin upload creator dinonaktifkan.`)
+      setBlockDialogOpen(false)
+      await fetchComics()
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal memblokir komik.'))
     } finally {
       setBlockBusyId(null)
     }
   }
 
-  // Open ban dialog
-  const openBanDialog = (comic: AdminComic, type: 'ban' | 'permanent_ban') => {
+  // Open permanent-ban dialog
+  const openBanDialog = (comic: AdminComic) => {
     setBanTarget(comic)
-    setBanType(type)
     setBanReason('')
     setBanDialogOpen(true)
   }
 
-  // Execute ban
+  // Execute permanent ban
   const executeBan = async () => {
     if (!banTarget) return
     setBanBusyId(banTarget.id)
     setNotice('')
     try {
-      if (banType === 'permanent_ban') {
-        await admin.permanentBanUser(banTarget.creator.id, banReason || 'Diblokir permanen oleh admin')
-        setNotice(`Akun "${banTarget.creator.name}" diblokir permanen.`)
-      } else {
-        await admin.banUser(banTarget.creator.id, banReason || 'Diblokir oleh admin')
-        setNotice(`Akun "${banTarget.creator.name}" berhasil diblokir.`)
-      }
+      await admin.permanentBanUser(banTarget.creator.id, banReason || 'Diblokir permanen oleh admin')
+      setNotice(`Akun "${banTarget.creator.name}" diblokir permanen — tidak bisa login.`)
       setBanDialogOpen(false)
       await fetchComics()
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Gagal memblokir akun.'))
+      setError(getApiErrorMessage(err, 'Gagal memblokir permanen akun.'))
     } finally {
       setBanBusyId(null)
     }
   }
 
-  // Unban creator
-  const unbanCreator = async (comic: AdminComic) => {
-    setUnbanBusyId(comic.id)
-    setNotice('')
-    try {
-      await admin.unbanUser(comic.creator.id)
-      setNotice(`Akun "${comic.creator.name}" berhasil di-unban.`)
-      await fetchComics()
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Gagal membuka blokir.'))
-    } finally {
-      setUnbanBusyId(null)
-    }
-  }
 
   // Delete comic
   const confirmDelete = async () => {
@@ -244,6 +281,59 @@ export default function AdminComicsPage() {
       setError(getApiErrorMessage(err, 'Gagal mempublish episode.'))
     } finally {
       setEpisodePublishBusyId(null)
+    }
+  }
+
+  // Tolak episode — episode otomatis dihapus (creator dapat notifikasi alasan)
+  const rejectEpisode = async () => {
+    if (!rejectEpTarget) return
+    const { ep, comicId } = rejectEpTarget
+    setRejectEpBusyId(ep.id)
+    setNotice('')
+    try {
+      await admin.rejectEpisode(ep.id, rejectEpReason.trim() || undefined)
+      setComicEpisodes((prev) => ({
+        ...prev,
+        [comicId]: (prev[comicId] || []).filter((row) => row.id !== ep.id),
+      }))
+      setComics((prev) =>
+        prev.map((c) =>
+          c.id === comicId ? { ...c, episode_count: Math.max(0, c.episode_count - 1) } : c
+        )
+      )
+      setNotice(`Episode "${ep.title}" ditolak & dihapus. Creator mendapat notifikasi berisi alasan.`)
+      setRejectEpTarget(null)
+      setRejectEpReason('')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal menolak episode.'))
+    } finally {
+      setRejectEpBusyId(null)
+    }
+  }
+
+  // Hapus episode dari dashboard admin
+  const confirmDeleteEpisode = async () => {
+    if (!deleteEpTarget) return
+    const { ep, comicId } = deleteEpTarget
+    setDeleteEpBusy(true)
+    setNotice('')
+    try {
+      await admin.deleteEpisode(ep.id)
+      setComicEpisodes((prev) => ({
+        ...prev,
+        [comicId]: (prev[comicId] || []).filter((row) => row.id !== ep.id),
+      }))
+      setComics((prev) =>
+        prev.map((c) =>
+          c.id === comicId ? { ...c, episode_count: Math.max(0, c.episode_count - 1) } : c
+        )
+      )
+      setNotice(`Episode "${ep.title}" berhasil dihapus.`)
+      setDeleteEpTarget(null)
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal menghapus episode.'))
+    } finally {
+      setDeleteEpBusy(false)
     }
   }
 
@@ -331,7 +421,7 @@ export default function AdminComicsPage() {
             const isPending = c.verification_status === 'pending'
             const isApproved = c.verification_status === 'approved'
             const isRejected = c.verification_status === 'rejected'
-            const isBlocked = !c.published_at && c.status === 'hiatus'
+            const isBlocked = c.verification_status === 'blocked'
 
             return (
               <div key={c.id} className="overflow-hidden rounded-2xl border border-surface-800 bg-surface-900">
@@ -409,19 +499,29 @@ export default function AdminComicsPage() {
                         <button
                           onClick={() => publishComic(c)}
                           disabled={publishBusyId === c.id}
+                          title="Setujui & terbitkan komik — setiap episode tetap disetujui satu per satu"
                           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
                         >
                           {publishBusyId === c.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />} Publish
                         </button>
                         <button
-                          onClick={() => openBanDialog(c, 'ban')}
-                          disabled={banBusyId === c.id}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/25 disabled:opacity-50"
+                          onClick={() => { setRejectTarget(c); setRejectReason('') }}
+                          disabled={rejectBusyId === c.id}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/25 disabled:opacity-50"
+                          title="Tolak komik dengan alasan — creator bisa perbaiki & ajukan ulang"
                         >
-                          <Ban size={14} /> Blokir
+                          <XCircle size={14} /> Tolak
                         </button>
                         <button
-                          onClick={() => openBanDialog(c, 'permanent_ban')}
+                          onClick={() => openBlockDialog(c)}
+                          disabled={blockBusyId === c.id}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500/15 px-3 py-2 text-xs font-semibold text-orange-300 transition-colors hover:bg-orange-500/25 disabled:opacity-50"
+                          title="Blokir komik & nonaktifkan izin upload creator (creator tetap bisa login)"
+                        >
+                          {blockBusyId === c.id ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />} Diblokir
+                        </button>
+                        <button
+                          onClick={() => openBanDialog(c)}
                           disabled={banBusyId === c.id}
                           className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/25 disabled:opacity-50"
                         >
@@ -431,20 +531,22 @@ export default function AdminComicsPage() {
                     )}
                     {isApproved && (
                       <button
-                        onClick={() => openBanDialog(c, 'ban')}
-                        disabled={banBusyId === c.id}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/25 disabled:opacity-50"
+                        onClick={() => openBlockDialog(c)}
+                        disabled={blockBusyId === c.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500/15 px-3 py-2 text-xs font-semibold text-orange-300 transition-colors hover:bg-orange-500/25 disabled:opacity-50"
+                        title="Blokir komik & nonaktifkan izin upload creator (creator tetap bisa login)"
                       >
-                        <Ban size={14} /> Blokir
+                        {blockBusyId === c.id ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />} Diblokir
                       </button>
                     )}
                     {isBlocked && (
                       <button
-                        onClick={() => blockComic(c)}
-                        disabled={blockBusyId === c.id}
+                        onClick={() => publishComic(c)}
+                        disabled={publishBusyId === c.id}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
+                        title="Buka blokir, setujui kembali & terbitkan komik"
                       >
-                        <Upload size={14} /> Publish
+                        {publishBusyId === c.id ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Publish
                       </button>
                     )}
                     <button
@@ -463,16 +565,19 @@ export default function AdminComicsPage() {
                       <button onClick={() => publishComic(c)} disabled={publishBusyId === c.id} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300">
                         {publishBusyId === c.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />} Publish
                       </button>
-                      <button onClick={() => openBanDialog(c, 'ban')} disabled={banBusyId === c.id} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-300">
-                        <Ban size={14} /> Blokir
+                      <button onClick={() => { setRejectTarget(c); setRejectReason('') }} disabled={rejectBusyId === c.id} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-300">
+                        <XCircle size={14} /> Tolak
                       </button>
-                      <button onClick={() => openBanDialog(c, 'permanent_ban')} disabled={banBusyId === c.id} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-300">
-                        <ShieldAlert size={14} /> Ban
+                      <button onClick={() => openBlockDialog(c)} disabled={blockBusyId === c.id} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-orange-500/15 px-3 py-2 text-xs font-semibold text-orange-300">
+                        <Ban size={14} /> Diblokir
+                      </button>
+                      <button onClick={() => openBanDialog(c)} disabled={banBusyId === c.id} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-300">
+                        <ShieldAlert size={14} /> Ban Permanen
                       </button>
                     </>
                   )}
                   {isBlocked && (
-                    <button onClick={() => blockComic(c)} disabled={blockBusyId === c.id} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300">
+                    <button onClick={() => publishComic(c)} disabled={publishBusyId === c.id} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300">
                       <Upload size={14} /> Publish
                     </button>
                   )}
@@ -486,6 +591,11 @@ export default function AdminComicsPage() {
                   >
                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     <FileText size={14} /> Episode ({c.episode_count})
+                    {isPending && (
+                      <span className="ml-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold text-amber-300">
+                        Setujui per episode
+                      </span>
+                    )}
                   </button>
                   {isExpanded && (
                     <div className="border-t border-surface-800 bg-surface-950/50 px-4 py-3">
@@ -496,14 +606,54 @@ export default function AdminComicsPage() {
                       ) : episodes.length === 0 ? (
                         <p className="py-4 text-center text-sm text-surface-500">Belum ada episode.</p>
                       ) : (
-                        <div className="space-y-1.5">
-                          {episodes.map((ep) => (
-                            <div key={ep.id} className="flex items-center gap-3 rounded-lg bg-surface-900 px-3 py-2">
+                        <div className="space-y-1.5">            {/* Komik belum disetujui — episode belum bisa diterbitkan satu per satu */}
+            {!isApproved && episodes.length > 0 && (
+              <p className="mb-2 flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] leading-snug text-amber-200/90">
+                <ShieldAlert size={14} className="mt-0.5 shrink-0 text-amber-300" />
+                <span>
+                  Komik ini <b className="font-semibold">belum disetujui</b>. Setujui komik terlebih dahulu dengan tombol{' '}
+                  <b className="font-semibold">Publish</b> pada kartu komik di atas, baru episode-nya bisa diterbitkan satu per satu di bawah ini.
+                </span>
+              </p>
+            )}
+            {episodes.map((ep) => (
+              <div
+                key={ep.id}
+                className={`flex flex-wrap items-center gap-3 rounded-lg border-l-4 bg-surface-900 px-3 py-2 ${
+                  adminEpisodeStatus(ep.status) === 'pending'
+                    ? 'border-l-amber-400'
+                    : adminEpisodeStatus(ep.status) === 'published'
+                      ? 'border-l-emerald-400'
+                      : 'border-l-white/30'
+                }`}
+              >
                               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-800 font-mono text-[10px] font-bold text-surface-400">
                                 {ep.number}
                               </span>
                               <span className="min-w-0 flex-1 truncate text-sm text-surface-200">{ep.title}</span>
-                              <StatusBadge status={ep.status} />
+                              {/* Status per episode: Draft / Menunggu Review / Terbit */}
+                              {adminEpisodeStatus(ep.status) === 'draft' ? (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white"
+                                  title="Draft — belum dikirim creator untuk direview"
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full bg-white" /> Draft
+                                </span>
+                              ) : adminEpisodeStatus(ep.status) === 'pending' ? (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300"
+                                  title="Menunggu review — creator sudah mengirim episode ini"
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Menunggu Review
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300"
+                                  title="Terbit — sudah disetujui admin dan tampil publik"
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Terbit
+                                </span>
+                              )}
                               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${ep.is_premium ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
                                 {ep.is_premium ? `${ep.price_coin}k` : 'Free'}
                               </span>
@@ -514,17 +664,52 @@ export default function AdminComicsPage() {
                               >
                                 <Eye size={12} className="inline" /> Lihat
                               </button>
-                              {ep.status === 'draft' ? (
+                              {adminEpisodeStatus(ep.status) === 'published' ? (
+                                <span className="shrink-0 text-[10px] font-semibold text-emerald-400">✓ Terbit</span>
+                              ) : !isApproved ? (
+                                <span
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-surface-700 bg-surface-800/60 px-2.5 py-1 text-[10px] font-bold text-surface-500"
+                                  title="Setujui komik terlebih dahulu (tombol Publish pada kartu komik) sebelum menerbitkan episode"
+                                >
+                                  <ShieldAlert size={12} /> Setujui Komik Dulu
+                                </span>
+                              ) : (
                                 <button
                                   onClick={() => publishEpisode(ep.id, c.id)}
-                                  disabled={episodePublishBusyId === ep.id}
-                                  className="shrink-0 rounded-md bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
+                                  disabled={episodePublishBusyId === ep.id || ep.page_count === 0}
+                                  title={
+                                    ep.page_count === 0
+                                      ? 'Episode belum punya halaman — creator harus unggah halaman dulu'
+                                      : 'Setujui & terbitkan episode ini'
+                                  }
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
-                                  {episodePublishBusyId === ep.id ? <Loader2 size={12} className="animate-spin" /> : 'Publish'}
+                                  {episodePublishBusyId === ep.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                                  {adminEpisodeStatus(ep.status) === 'pending' ? 'Setujui' : 'Publish'}
                                 </button>
-                              ) : (
-                                <span className="shrink-0 text-[10px] text-emerald-400">✓</span>
                               )}
+                              {adminEpisodeStatus(ep.status) !== 'draft' && (
+                                <button
+                                  onClick={() => { setRejectEpTarget({ ep, comicId: c.id }); setRejectEpReason('') }}
+                                  disabled={rejectEpBusyId === ep.id}
+                                  title={
+                                    ep.status === 'published'
+                                      ? 'Tarik & hapus episode ini — tidak lagi tampil publik'
+                                      : 'Tolak episode — episode otomatis dihapus, creator mendapat alasan via notifikasi'
+                                  }
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md bg-red-500/10 px-2.5 py-1 text-[10px] font-bold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                                >
+                                  {rejectEpBusyId === ep.id ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                                  Tolak
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setDeleteEpTarget({ ep, comicId: c.id })}
+                                className="inline-flex shrink-0 items-center gap-1 rounded-md bg-surface-800 px-2.5 py-1 text-[10px] font-bold text-surface-400 transition-colors hover:bg-red-500/15 hover:text-red-300"
+                                title="Hapus episode permanen — beserta seluruh halaman & data terkait"
+                              >
+                                <Trash2 size={12} /> Hapus
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -551,18 +736,116 @@ export default function AdminComicsPage() {
         onCancel={() => setDeleteTarget(null)}
       />
 
-      {/* Ban dialog */}
+      {/* Tolak episode dialog — menolak otomatis menghapus episode */}
       <ConfirmDialog
-        open={banDialogOpen}
-        title={banType === 'permanent_ban' ? 'Ban Permanen Akun' : 'Blokir Akun'}
+        open={rejectEpTarget !== null}
+        title="Tolak & Hapus Episode"
         description={
-          banTarget
-            ? banType === 'permanent_ban'
-              ? `Akun "${banTarget.creator.name}" akan diblokir permanen. Tidak bisa login lagi.`
-              : `Akun "${banTarget.creator.name}" akan diblokir. Masih bisa baca komik tapi tidak bisa upload lagi.`
+          rejectEpTarget
+            ? `Tolak episode ${rejectEpTarget.ep.number} "${rejectEpTarget.ep.title}"? Episode beserta seluruh halamannya akan otomatis dihapus dan tidak tampil publik. Creator menerima notifikasi berisi alasan penolakan.`
             : ''
         }
-        confirmLabel={banType === 'permanent_ban' ? 'Ban Permanen' : 'Blokir'}
+        confirmLabel="Tolak & Hapus"
+        loading={rejectEpBusyId !== null}
+        onConfirm={rejectEpisode}
+        onCancel={() => { setRejectEpTarget(null); setRejectEpReason('') }}
+      >
+        <div className="mt-3">
+          <label className="mb-1 block text-xs font-medium text-surface-400">Alasan penolakan (opsional)</label>
+          <textarea
+            value={rejectEpReason}
+            onChange={(e) => setRejectEpReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Contoh: perbaiki kualitas gambar, judul, atau isi halaman…"
+            className="w-full resize-none rounded-lg border border-surface-800 bg-surface-950 px-3 py-2 text-sm text-surface-100 placeholder:text-surface-600 focus:border-red-500 focus:outline-none"
+          />
+        </div>
+        <p className="mt-2 flex items-start gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-2.5 py-1.5 text-[11px] leading-snug text-red-300">
+          <AlertCircle size={13} className="mt-0.5 shrink-0" />
+          Episode yang ditolak otomatis terhapus permanen. Creator tetap mendapat notifikasi berisi alasan Anda dan dapat mengunggah ulang episode yang diperbaiki.
+        </p>
+      </ConfirmDialog>
+
+      {/* Hapus episode dialog */}
+      <ConfirmDialog
+        open={deleteEpTarget !== null}
+        title="Hapus Episode"
+        description={
+          deleteEpTarget
+            ? `Hapus episode ${deleteEpTarget.ep.number} "${deleteEpTarget.ep.title}"? Episode beserta seluruh halaman, komentar, dan riwayat pembacaannya akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.`
+            : ''
+        }
+        confirmLabel="Hapus Episode"
+        loading={deleteEpBusy}
+        onConfirm={confirmDeleteEpisode}
+        onCancel={() => setDeleteEpTarget(null)}
+      />
+
+      {/* Tolak komik dialog */}
+      <ConfirmDialog
+        open={rejectTarget !== null}
+        title="Tolak Komik"
+        description={
+          rejectTarget
+            ? `Tolak komik "${rejectTarget.title}"? Creator akan menerima notifikasi beserta alasan penolakan dan bisa memperbaiki lalu mengajukan ulang.`
+            : ''
+        }
+        confirmLabel="Tolak Komik"
+        loading={rejectBusyId !== null}
+        onConfirm={rejectComic}
+        onCancel={() => { setRejectTarget(null); setRejectReason('') }}
+      >
+        <div className="mt-3">
+          <label className="mb-1 block text-xs font-medium text-surface-400">Alasan penolakan (opsional)</label>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Contoh: judul/sinopsis melanggar pedoman komunitas…"
+            className="w-full resize-none rounded-lg border border-surface-800 bg-surface-950 px-3 py-2 text-sm text-surface-100 placeholder:text-surface-600 focus:border-red-500 focus:outline-none"
+          />
+        </div>
+      </ConfirmDialog>
+
+      {/* Blokir komik dialog — komik masuk page Diblokir & izin upload creator dinonaktifkan */}
+      <ConfirmDialog
+        open={blockDialogOpen}
+        title="Blokir Komik"
+        description={
+          blockTarget
+            ? `Komik "${blockTarget.title}" tidak disetujui & masuk halaman Diblokir. Creator "${blockTarget.creator.name}" tetap bisa login, tapi izin upload komiknya dinonaktifkan (bisa diaktifkan kembali lewat Manajemen Pengguna).`
+            : ''
+        }
+        confirmLabel="Blokir Komik"
+        loading={blockBusyId === blockTarget?.id}
+        onConfirm={confirmBlock}
+        onCancel={() => setBlockDialogOpen(false)}
+      >
+        <div className="mt-3">
+          <label className="mb-1 block text-xs font-medium text-surface-400">Alasan pemblokiran (opsional)</label>
+          <textarea
+            value={blockReason}
+            onChange={(e) => setBlockReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Contoh: melanggar hak cipta, konten tidak pantas…"
+            className="w-full resize-none rounded-lg border border-surface-800 bg-surface-950 px-3 py-2 text-sm text-surface-100 placeholder:text-surface-600 focus:border-orange-500 focus:outline-none"
+          />
+        </div>
+      </ConfirmDialog>
+
+      {/* Ban permanen dialog */}
+      <ConfirmDialog
+        open={banDialogOpen}
+        title="Ban Permanen Akun"
+        description={
+          banTarget
+            ? `Akun "${banTarget.creator.name}" akan diblokir permanen. Tidak bisa login lagi. Admin dapat membuka kembali login kapan saja melalui Manajemen Pengguna.`
+            : ''
+        }
+        confirmLabel="Ban Permanen"
         loading={banBusyId === banTarget?.id}
         onConfirm={executeBan}
         onCancel={() => setBanDialogOpen(false)}
@@ -572,8 +855,8 @@ export default function AdminComicsPage() {
           <input
             value={banReason}
             onChange={(e) => setBanReason(e.target.value)}
-            placeholder={banType === 'permanent_ban' ? 'Diblokir permanen oleh admin' : 'Diblokir oleh admin'}
-            className="w-full rounded-lg border border-surface-800 bg-surface-950 px-3 py-2 text-sm text-surface-100 placeholder:text-surface-600 focus:border-brand-500 focus:outline-none"
+            placeholder="Diblokir permanen oleh admin"
+            className="w-full rounded-lg border border-surface-800 bg-surface-950 px-3 py-2 text-sm text-surface-100 placeholder:text-surface-600 focus:border-red-500 focus:outline-none"
           />
         </div>
       </ConfirmDialog>

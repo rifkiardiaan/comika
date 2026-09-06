@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
-  BookOpen,
   Eye,
   Flag,
   Gem,
+  History,
   Landmark,
   LayoutDashboard,
   LogOut,
@@ -29,6 +29,7 @@ const navItems = [
   { to: '/admin/comics', label: 'Laporan Komik', icon: Flag },
   { to: '/admin/comments', label: 'Komentar', icon: MessageSquare },
   { to: '/admin/reading', label: 'Laporan Pembaca', icon: Eye },
+  { to: '/admin/activities', label: 'Riwayat Aktivitas', icon: History },
   { to: '/admin/genres', label: 'Genre', icon: Tags },
   { to: '/admin/transactions', label: 'Transaksi', icon: Landmark },
 ]

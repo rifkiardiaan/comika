@@ -57,5 +57,104 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- ============================================================
+-- Episodes: tambah status 'pending' (creator ajukan → menunggu review admin)
+-- jika kolom belum mendukung 'pending'
+-- ============================================================
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'episodes' AND COLUMN_NAME = 'status' AND COLUMN_TYPE LIKE '%pending%');
+SET @sql = IF(@exists = 0,
+    'ALTER TABLE `episodes` MODIFY COLUMN `status` ENUM(\'draft\',\'pending\',\'published\') NOT NULL DEFAULT \'draft\'',
+    'SELECT "episodes.status already supports pending" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Episode lama berstatus draft tidak berubah; tidak ada data 'pending' sebelum fitur ini.
+
+-- ============================================================
+-- Comics: tambah status 'draft' pada verification_status
+-- (komik baru dibuat draft & baru masuk antrian review setelah creator
+--  menekan "Ajukan Review")
+-- ============================================================
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'comics' AND COLUMN_NAME = 'verification_status' AND COLUMN_TYPE LIKE '%draft%');
+SET @sql = IF(@exists = 0,
+    'ALTER TABLE `comics` MODIFY COLUMN `verification_status` ENUM(\'draft\',\'pending\',\'approved\',\'rejected\') NOT NULL DEFAULT \'pending\'',
+    'SELECT "comics.verification_status already supports draft" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Komik lama (sebelum fitur draft) tetap dipertahankan statusnya.
+
+-- ============================================================
+-- Episodes: tambah rejection_reason (alasan admin menolak episode)
+-- ============================================================
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'episodes' AND COLUMN_NAME = 'rejection_reason');
+SET @sql = IF(@exists = 0,
+    'ALTER TABLE `episodes` ADD COLUMN `rejection_reason` VARCHAR(500) NULL DEFAULT NULL AFTER `published_at`',
+    'SELECT "episodes.rejection_reason already exists" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- Riwayat Aktivitas (feature 13): tabel activity_logs
+-- ============================================================
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'activity_logs');
+SET @sql = IF(@exists = 0,
+    'CREATE TABLE `activity_logs` (
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `user_id` BIGINT UNSIGNED DEFAULT NULL,
+        `action` VARCHAR(60) NOT NULL,
+        `description` VARCHAR(500) DEFAULT NULL,
+        `subject_type` VARCHAR(120) DEFAULT NULL,
+        `subject_id` BIGINT UNSIGNED DEFAULT NULL,
+        `metadata` JSON DEFAULT NULL,
+        `ip_address` VARCHAR(45) DEFAULT NULL,
+        `created_at` TIMESTAMP NULL DEFAULT NULL,
+        `updated_at` TIMESTAMP NULL DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `activity_logs_user_id_index` (`user_id`),
+        KEY `activity_logs_action_index` (`action`),
+        KEY `activity_logs_subject_type_subject_id_index` (`subject_type`, `subject_id`),
+        KEY `activity_logs_created_at_index` (`created_at`),
+        CONSTRAINT `activity_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+    'SELECT "activity_logs table already exists" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- Comics: tambah status 'blocked' (Diblokir oleh admin)
+-- Komik diblokir tidak tampil publik; creator tetap bisa login
+-- tapi izin upload dimatikan lewat users.can_upload
+-- ============================================================
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'comics' AND COLUMN_NAME = 'verification_status' AND COLUMN_TYPE LIKE '%blocked%');
+SET @sql = IF(@exists = 0,
+    'ALTER TABLE `comics` MODIFY COLUMN `verification_status` ENUM(\'draft\',\'pending\',\'approved\',\'rejected\',\'blocked\') NOT NULL DEFAULT \'pending\'',
+    'SELECT "comics.verification_status already supports blocked" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Users: tambah kolom can_upload (izin creator upload komik)
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'can_upload');
+SET @sql = IF(@exists = 0,
+    'ALTER TABLE `users` ADD COLUMN `can_upload` TINYINT(1) NOT NULL DEFAULT \'1\' AFTER `role`',
+    'SELECT "users.can_upload already exists" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Konversi data lama: komik yang diblokir admin (rejected + hiatus + unpublish
+-- + alasan baku diblokir) dipindah ke verification_status = 'blocked'
+UPDATE `comics`
+SET `verification_status` = 'blocked'
+WHERE `verification_status` = 'rejected'
+  AND `status` = 'hiatus'
+  AND `published_at` IS NULL
+  AND `rejection_reason` = 'Komik diblokir oleh admin.';
+
+-- ============================================================
 -- Selesai! Sekarang deploy code baru
 -- ============================================================

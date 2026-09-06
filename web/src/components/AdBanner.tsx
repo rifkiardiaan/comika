@@ -9,6 +9,19 @@ interface AdBannerProps {
 export default function AdBanner({ onUpgrade, variant = 'full' }: AdBannerProps) {
   const [dismissed, setDismissed] = useState(false)
   const [countdown, setCountdown] = useState(5)
+  const [upgradeHint, setUpgradeHint] = useState(false)
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
+
+  const handleUpgrade = () => {
+    if (isOnline) {
+      setUpgradeHint(false)
+      onUpgrade?.()
+    } else {
+      // Saat offline (mis. di komik offline) CTA upgrade tidak boleh
+      // mengarah ke halaman yang tidak bisa dibuka — beri tahu saja.
+      setUpgradeHint(true)
+    }
+  }
 
   // Countdown timer untuk tombol skip
   useEffect(() => {
@@ -39,12 +52,17 @@ export default function AdBanner({ onUpgrade, variant = 'full' }: AdBannerProps)
             <p className="mt-0.5 text-xs text-surface-400">Baca komik tanpa gangguan iklan</p>
           </div>
           <button
-            onClick={() => onUpgrade?.()}
+            onClick={handleUpgrade}
             className="shrink-0 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-amber-500/25 transition-all hover:brightness-110"
           >
             Upgrade
           </button>
         </div>
+        {upgradeHint && (
+          <p className="mt-3 text-[11px] text-amber-300/90">
+            Upgrade tersedia saat kamu online kembali.
+          </p>
+        )}
       </div>
     )
   }
@@ -111,7 +129,7 @@ export default function AdBanner({ onUpgrade, variant = 'full' }: AdBannerProps)
 
         {/* CTA Button */}
         <button
-          onClick={() => onUpgrade?.()}
+          onClick={handleUpgrade}
           className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-8 py-3.5 text-sm font-bold text-white shadow-xl shadow-amber-500/25 transition-all hover:brightness-110"
         >
           Upgrade ke Premium <ArrowRight size={16} />
@@ -125,6 +143,11 @@ export default function AdBanner({ onUpgrade, variant = 'full' }: AdBannerProps)
         >
           {countdown > 0 ? `Lewati dalam ${countdown}s` : 'Lewati Iklan'}
         </button>
+        {upgradeHint && (
+          <p className="mt-2 text-[11px] text-amber-300/90">
+            Upgrade tersedia saat kamu online kembali.
+          </p>
+        )}
       </div>
     </div>
   )

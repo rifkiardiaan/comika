@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Schema;
 
 class EpisodeResource extends JsonResource
 {
@@ -33,6 +34,9 @@ class EpisodeResource extends JsonResource
             'thumbnail_url' => $thumbnailUrl,
             'published_at' => $this->published_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
+            // rejection_reason opsional — beberapa DB produksi belum punya kolomnya.
+            // Akses dilewati bila kolom tidak ada agar tidak memicu SQL error 42S22.
+            'rejection_reason' => static::episodeHasRejectionReason() ? ($this->rejection_reason ?? null) : null,
         ];
 
         // Status unlock premium (diset oleh controller saat user login)
@@ -45,5 +49,16 @@ class EpisodeResource extends JsonResource
         }
 
         return $data;
+    }
+
+    /**
+     * Cek sekali per request apakah kolom episodes.rejection_reason tersedia
+     * (hindari error 42S22 di DB produksi yang belum di-migrasi).
+     */
+    private static function episodeHasRejectionReason(): bool
+    {
+        static $has = null;
+
+        return $has ??= Schema::hasColumn('episodes', 'rejection_reason');
     }
 }

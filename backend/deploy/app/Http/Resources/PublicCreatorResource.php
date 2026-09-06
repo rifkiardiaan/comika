@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\BuildsStorageUrls;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -10,6 +11,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class PublicCreatorResource extends JsonResource
 {
+    use BuildsStorageUrls;
+
     /**
      * @return array<string, mixed>
      */
@@ -23,9 +26,7 @@ class PublicCreatorResource extends JsonResource
             'display_name' => $profile?->display_name ?? $this->name,
             'bio' => $profile?->bio,
             'avatar_url' => $this->avatar_url,
-            'banner_url' => $profile?->banner_url
-                ? asset('storage/'.$profile->banner_url)
-                : null,
+            'banner_url' => $this->storageUrl($request, $profile?->banner_url),
             'is_verified' => (bool) $profile?->is_verified,
             'stats' => $this->stats,
             'comics' => ComicResource::collection($this->public_comics),

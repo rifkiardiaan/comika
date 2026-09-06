@@ -28,6 +28,12 @@ export const creator = {
     return data.data
   },
 
+  /** Ajukan komik ke admin untuk direview (tidak langsung tampil publik). */
+  async submitComic(id: number | string): Promise<CreatorComic> {
+    const { data } = await api.post<{ data: CreatorComic }>(`/creator/comics/${id}/submit`)
+    return data.data
+  },
+
   /** Analytics per komik: ringkasan + breakdown per episode. */
   async analytics(id: number | string): Promise<ComicAnalytics> {
     const { data } = await api.get<{ data: ComicAnalytics }>(`/creator/comics/${id}/analytics`)

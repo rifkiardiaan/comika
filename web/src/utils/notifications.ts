@@ -44,6 +44,12 @@ export function notificationDescription(n: AppNotification): string {
     case 'new_episode':
       return `Episode baru dari ${n.data.comic_title ?? 'komik yang kamu ikuti'}`
     case 'comic_update':
+      // Notifikasi reject/hapus episode menyertakan pesan lengkap (alasan penolakan)
+      if (n.data.episode_title && n.data.status === 'rejected') {
+        return n.data.message
+          ? String(n.data.message)
+          : `Episode "${String(n.data.episode_title)}" ditolak oleh admin.`
+      }
       return `Status komik kini: ${statusLabel(String(n.data.status ?? ''))}`
     case 'comment_reply':
       return n.data.reply_snippet ?? 'Seseorang membalas komentarmu'

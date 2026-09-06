@@ -2,11 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\BuildsStorageUrls;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class CreatorProfileResource extends JsonResource
 {
+    use BuildsStorageUrls;
+
     /**
      * @return array<string, mixed>
      */
@@ -17,9 +20,7 @@ class CreatorProfileResource extends JsonResource
             'user_id' => $this->user_id,
             'display_name' => $this->display_name,
             'bio' => $this->bio,
-            'banner_url' => $this->banner_url
-                ? asset('storage/'.$this->banner_url)
-                : null,
+            'banner_url' => $this->storageUrl($request, $this->banner_url),
             'is_verified' => $this->is_verified,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

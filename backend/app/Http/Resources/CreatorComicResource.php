@@ -15,6 +15,7 @@ class CreatorComicResource extends ComicResource
 
         $data['published_episodes_count'] = $this->whenCounted('published_episodes_count');
         $data['draft_episodes_count'] = $this->whenCounted('draft_episodes_count');
+        $data['pending_episodes_count'] = $this->whenCounted('pending_episodes_count');
         $data['followers_count'] = $this->whenCounted('follows');
         $data['comments_count'] = $this->whenCounted('comments');
         $data['bookmarks_count'] = $this->whenCounted('bookmarks');

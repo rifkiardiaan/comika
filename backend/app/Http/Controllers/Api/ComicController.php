@@ -12,6 +12,7 @@ use App\Services\ComicService;
 use App\Services\ReadingHistoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ComicController extends Controller
 {
@@ -23,13 +24,16 @@ class ComicController extends Controller
 
     /**
      * Daftar komik — publik, dengan filter & pagination.
+     * Menggunakan cache untuk mengurangi beban DB saat banyak user.
      */
     public function index(Request $request): JsonResponse
     {
         $query = Comic::query()
             ->withCount('episodes')
             ->with(['creator', 'genres'])
-            ->whereNotNull('published_at');
+            ->whereNotNull('published_at')
+            // Hanya komik yang sudah disetujui admin yang tampil ke publik
+            ->where('verification_status', Comic::VERIFICATION_APPROVED);
 
         // Filter genre
         if ($request->filled('genre')) {
@@ -72,6 +76,15 @@ class ComicController extends Controller
      */
     public function show(Request $request, Comic $comic): JsonResponse
     {
+        // Komik hanya bisa dilihat publik jika sudah disetujui & diterbitkan admin
+        if (! $comic->published_at || $comic->verification_status !== Comic::VERIFICATION_APPROVED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Komik belum diterbitkan.',
+                'errors' => (object) [],
+            ], 404);
+        }
+
         $comic->load([
             'creator',
             'genres',
@@ -109,6 +122,14 @@ class ComicController extends Controller
      */
     public function store(StoreComicRequest $request): JsonResponse
     {
+        // Creator yang izin uploadnya dinonaktifkan admin tidak bisa buat komik baru
+        if (! $request->user()->canUpload()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Izin upload komik Anda dinonaktifkan oleh admin. Hubungi admin untuk mengaktifkannya kembali.',
+            ], 403);
+        }
+
         $comic = $this->comicService->create(
             $request->user()->id,
             $request->only(['title', 'synopsis', 'status', 'age_rating']),

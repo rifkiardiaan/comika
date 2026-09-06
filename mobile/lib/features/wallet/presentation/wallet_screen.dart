@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../services/auth_service.dart';
@@ -19,6 +21,7 @@ class _WalletScreenState extends State<WalletScreen> {
   late Future<(WalletSummary, List<CoinPackage>)> _future;
   int? _buyingId;
   String? _notice;
+  String? _error;
 
   @override
   void initState() {
@@ -34,28 +37,71 @@ class _WalletScreenState extends State<WalletScreen> {
     return (results[0] as WalletSummary, results[1] as List<CoinPackage>);
   }
 
+  /// Beli koin via Midtrans — buka halaman pembayaran di WebView.
   Future<void> _buy(CoinPackage pkg) async {
     setState(() {
       _buyingId = pkg.id;
       _notice = null;
+      _error = null;
     });
     try {
-      await _repo.purchase(pkg.id);
-      // Sinkronkan saldo ke sesi user agar Profil menampilkan angka terbaru
-      unawaited(AuthService.instance.me().then((_) {}).catchError((_) {}));
+      final result = await _repo.purchase(pkg.id);
+
       if (!mounted) return;
-      setState(() {
-        _notice = 'Berhasil! ${pkg.coins} koin ditambahkan ke dompet.';
-        _buyingId = null;
-        _future = _load();
-      });
-    } on ApiException catch (e) {
-      if (mounted) {
+
+      // Buka halaman pembayaran Midtrans di WebView
+      final snapToken = result['snap_token'] as String?;
+      final orderId = result['order_id'] as String?;
+      final redirectUrl = result['redirect_url'] as String?;
+
+      if (snapToken == null || orderId == null) {
+        setState(() {
+          _error = 'Gagal membuat token pembayaran.';
+          _buyingId = null;
+        });
+        return;
+      }
+
+      // Navigate to payment WebView
+      final paymentResult = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => _PaymentWebView(
+            redirectUrl: redirectUrl ?? '',
+            orderId: orderId,
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (paymentResult == true) {
+        // Payment successful — refresh wallet
+        setState(() {
+          _notice = 'Pembayaran berhasil! Koin telah ditambahkan.';
+          _buyingId = null;
+          _future = _load();
+        });
+        // Sync user balance
+        AuthService.instance.me().then((_) {}).catchError((_) {});
+      } else {
         setState(() {
           _notice = null;
           _buyingId = null;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _buyingId = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Gagal membeli koin: $e';
+          _buyingId = null;
+        });
       }
     }
   }
@@ -149,10 +195,48 @@ class _WalletScreenState extends State<WalletScreen> {
                 ),
               ],
 
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, size: 18, color: Colors.redAccent),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 24),
-              Text('Top-Up Koin', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.grey.shade100)),
+              Row(
+                children: [
+                  Text('Top-Up Koin', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.grey.shade100)),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.credit_card, size: 11, color: Colors.greenAccent),
+                        SizedBox(width: 3),
+                        Text('Midtrans', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.greenAccent)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 4),
-              Text('Pembayaran disimulasikan pada MVP ini', style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+              Text('Pilih paket & bayar via transfer bank, e-wallet, dll.', style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
               const SizedBox(height: 12),
 
               if (packages.isEmpty)
@@ -235,6 +319,106 @@ class _WalletScreenState extends State<WalletScreen> {
         Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         Text(label, style: TextStyle(color: Colors.grey.shade400, fontSize: 10)),
       ],
+    );
+  }
+}
+
+/// WebView halaman pembayaran Midtrans.
+/// Setelah pembayaran selesai, verifikasi ke backend & return result.
+class _PaymentWebView extends StatefulWidget {
+  final String redirectUrl;
+  final String orderId;
+
+  const _PaymentWebView({required this.redirectUrl, required this.orderId});
+
+  @override
+  State<_PaymentWebView> createState() => _PaymentWebViewState();
+}
+
+class _PaymentWebViewState extends State<_PaymentWebView> {
+  late final WebViewController _controller;
+  bool _isLoading = true;
+  bool _verified = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageStarted: (_) {
+          if (mounted) setState(() => _isLoading = true);
+        },
+        onPageFinished: (url) {
+          if (mounted) setState(() => _isLoading = false);
+          // Check if redirected back from Midtrans
+          _checkPaymentStatus(url);
+        },
+      ))
+      ..loadRequest(Uri.parse(widget.redirectUrl));
+  }
+
+  void _checkPaymentStatus(String url) {
+    // Midtrans will redirect to callback URL with status
+    if (url.contains('status_code=200') || url.contains('transaction_status=settlement') || url.contains('transaction_status=capture')) {
+      _verifyAndClose(true);
+    } else if (url.contains('status_code=202') || url.contains('transaction_status=pending')) {
+      // Still pending — try verification
+      _verifyPayment();
+    } else if (url.contains('status_code=400') || url.contains('status_code=407') || url.contains('status_code=408')) {
+      _verifyAndClose(false);
+    }
+  }
+
+  Future<void> _verifyPayment() async {
+    if (_verified) return;
+    _verified = true;
+
+    try {
+      final api = ApiService.instance;
+      final res = await api.post('${ApiConstants.baseUrl}/midtrans/verify-payment', {
+        'order_id': widget.orderId,
+      });
+      final data = res['data'] as Map<String, dynamic>? ?? {};
+      final status = data['status'] as String? ?? '';
+      final credited = data['coins_credited'] as bool? ?? false;
+
+      if (mounted) {
+        Navigator.of(context).pop(credited || status == 'success');
+      }
+    } catch (_) {
+      // If verification fails, close and let user refresh
+      if (mounted) {
+        Navigator.of(context).pop(false);
+      }
+    }
+  }
+
+  void _verifyAndClose(bool success) {
+    if (success) {
+      _verifyPayment();
+    } else {
+      Navigator.of(context).pop(false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pembayaran', style: TextStyle(fontSize: 16)),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+      ),
+      body: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator()),
+        ],
+      ),
     );
   }
 }

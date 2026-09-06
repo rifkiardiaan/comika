@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   AlertCircle,
@@ -8,6 +8,7 @@ import {
   Check,
   Coins,
   Copy,
+  Download,
   Eye,
   Gem,
   Heart,
@@ -31,6 +32,8 @@ import { auth } from '../services/auth'
 import { coverEmoji, coverKeyOf, coverStyle } from '../data/mock'
 import { formatDate, formatNumber, timeAgo } from '../utils/format'
 import AuthWall from '../components/AuthWall'
+import { dbGetComic, dbDeleteComic, downloadComicOffline, type DownloadProgress, type OfflineComic } from '../services/offlineDb'
+import { logOfflineDownload } from '../services/api'
 import type { ComicDetail, Comment } from '../types'
 
 export default function ComicDetailPage() {
@@ -45,6 +48,16 @@ export default function ComicDetailPage() {
   const [bookmarked, setBookmarked] = useState(false)
   const [busy, setBusy] = useState<'follow' | 'like' | 'bookmark' | null>(null)
   const [likeCount, setLikeCount] = useState(0)
+  const [savedOffline, setSavedOffline] = useState(false)
+  const [savedIncomplete, setSavedIncomplete] = useState(false)
+
+  // Unduh komik offline (seluruh episode → gambar)
+  const [offlineBusy, setOfflineBusy] = useState(false)
+  const [offlineProgress, setOfflineProgress] = useState<DownloadProgress | null>(null)
+  const [offlineDone, setOfflineDone] = useState<OfflineComic | null>(null)
+  const [offlineError, setOfflineError] = useState('')
+  const [removeConfirm, setRemoveConfirm] = useState(false)
+  const offlineAbortRef = useRef<AbortController | null>(null)
 
   // Komentar
   const [comments, setComments] = useState<Comment[]>([])
@@ -75,6 +88,16 @@ export default function ComicDetailPage() {
         setLiked(detail.user_actions.is_liked)
         setBookmarked(detail.user_actions.is_bookmarked)
       }
+      // Cek apakah komik sudah tersimpan offline (IndexedDB) — dan apakah
+      // entri lama tidak lengkap (0 halaman) sehingga perlu diunduh ulang.
+      try {
+        const entry = user ? await dbGetComic(user.id, Number(id)) : undefined
+        setSavedOffline(!!entry)
+        setSavedIncomplete(!!entry && entry.totalPages === 0)
+      } catch {
+        setSavedOffline(false)
+        setSavedIncomplete(false)
+      }
       // Komentar opsional — kegagalannya tidak boleh merusak halaman utama
       try {
         const commentRes = await community.comments(Number(id))
@@ -89,7 +112,7 @@ export default function ComicDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, user])
 
   useEffect(() => {
     if (id) fetchComic()
@@ -108,6 +131,65 @@ export default function ComicDetailPage() {
       // abaikan
     } finally {
       setLoadingMore(false)
+    }
+  }
+
+  // ===== Unduh / hapus komik offline (seluruh episode dalam bentuk gambar) =====
+  const startOfflineDownload = async () => {
+    if (!comic || !user || offlineBusy) return
+    const ctrl = new AbortController()
+    offlineAbortRef.current = ctrl
+    setOfflineBusy(true)
+    setOfflineProgress(null)
+    setOfflineDone(null)
+    setOfflineError('')
+    try {
+      const entry = await downloadComicOffline({
+        userId: user.id,
+        comicId: comic.id,
+        signal: ctrl.signal,
+        onProgress: setOfflineProgress,
+      })
+      setSavedOffline(true)
+      setSavedIncomplete(false)
+      setOfflineDone(entry)
+      // Fire-and-forget: catat ke Riwayat Aktivitas admin (feature 13)
+      void logOfflineDownload(comic.id, entry.totalEpisodes, entry.totalPages)
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
+      setOfflineError(getApiErrorMessage(err, 'Gagal mengunduh komik offline.'))
+    } finally {
+      setOfflineBusy(false)
+      offlineAbortRef.current = null
+    }
+  }
+
+  const cancelOfflineDownload = () => {
+    offlineAbortRef.current?.abort()
+    setOfflineBusy(false)
+    setOfflineProgress(null)
+  }
+
+  const openOfflineAction = () => {
+    if (!user) return
+    if (savedOffline && !savedIncomplete) {
+      setRemoveConfirm(true)
+    } else {
+      // Belum tersimpan ATAU entri lama tidak lengkap (0 halaman) → unduh ulang
+      // (dbPutComic menimpa entri lama dengan key yang sama).
+      void startOfflineDownload()
+    }
+  }
+
+  const removeOffline = async () => {
+    if (!comic || !user) return
+    try {
+      await dbDeleteComic(user.id, comic.id)
+      setSavedOffline(false)
+      setSavedIncomplete(false)
+      setRemoveConfirm(false)
+    } catch {
+      // abaikan
     }
   }
 
@@ -179,7 +261,7 @@ export default function ComicDetailPage() {
 
   const comicUrl = typeof window !== 'undefined' ? `${window.location.origin}/comic/${comic?.id}` : ''
   const shareTitle = comic?.title ?? 'Komik COMIKA'
-  const shareText = `Baca komik \"${shareTitle}\" di COMIKA! 🎨`
+  const shareText = `Baca komik "${shareTitle}" di COMIKA! 🎨`
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -427,6 +509,31 @@ export default function ComicDetailPage() {
               >
                 {bookmarked ? <Check size={16} /> : <Bookmark size={16} />}
                 {bookmarked ? 'Tersimpan' : 'Simpan'}
+              </button>
+              <button
+                onClick={openOfflineAction}
+                disabled={!user || offlineBusy}
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all sm:gap-2 sm:px-5 sm:py-3 sm:text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                  savedOffline
+                    ? savedIncomplete
+                      ? 'border-amber-500 bg-amber-500/15 text-amber-300'
+                      : 'border-emerald-500 bg-emerald-500/15 text-emerald-300'
+                    : 'border-surface-700 bg-surface-900 text-surface-200 hover:border-emerald-500/50'
+                }`}
+                title={
+                  savedOffline && !savedIncomplete
+                    ? 'Komik tersimpan offline — klik untuk menghapus dari Komik Offline'
+                    : savedIncomplete
+                      ? 'Unduhan sebelumnya tidak lengkap (0 halaman) — klik untuk mengunduh ulang'
+                      : 'Unduh seluruh episode komik (gambar) untuk dibaca offline'
+                }
+              >
+                {offlineBusy ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                {offlineBusy
+                  ? 'Mengunduh…'
+                  : savedOffline
+                    ? savedIncomplete ? 'Unduh Ulang' : 'Tersimpan Offline'
+                    : 'Download Offline'}
               </button>
               <div className="relative">
                 <button
@@ -910,6 +1017,136 @@ export default function ComicDetailPage() {
           </div>
         </div>
       </section>
+      {/* ===== Modal offline: progres / selesai / error ===== */}
+      {(offlineBusy || offlineDone || offlineError) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md animate-slide-up rounded-2xl border border-surface-700 bg-surface-900 p-6 shadow-2xl">
+            {offlineBusy ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/15 text-brand-300">
+                    <Loader2 size={20} className="animate-spin" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-surface-50">Mengunduh Komik Offline</h3>
+                    <p className="mt-0.5 text-xs text-surface-400">
+                      {offlineProgress?.label ?? 'Menyiapkan…'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-brand-500 to-pink-500 transition-all duration-300"
+                    style={{
+                      width: offlineProgress && offlineProgress.total > 0
+                        ? `${Math.min(100, Math.round((offlineProgress.done / offlineProgress.total) * 100))}%`
+                        : '40%',
+                    }}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-surface-500">
+                  Seluruh halaman episode disimpan sebagai gambar agar bisa dibaca tanpa internet.
+                </p>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={cancelOfflineDownload}
+                    className="rounded-lg border border-surface-700 px-4 py-2 text-xs font-semibold text-surface-300 transition-colors hover:bg-surface-800"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </>
+            ) : offlineDone ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                    <Check size={20} />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-surface-50">Komik Tersimpan Offline</h3>
+                    <p className="mt-0.5 text-xs text-surface-400">
+                      {offlineDone.totalEpisodes} episode · {offlineDone.totalPages} halaman gambar tersimpan.
+                    </p>
+                  </div>
+                </div>
+                {typeof offlineDone.skippedLocked === 'number' && offlineDone.skippedLocked > 0 && (
+                  <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-300/90">
+                    {offlineDone.skippedLocked} episode premium masih terkunci sehingga halamannya tidak ikut diunduh.
+                    Buka episode dengan koin atau aktifkan <b>VVIP</b>, lalu unduh ulang agar ikut tersimpan.
+                  </p>
+                )}
+                <p className="mt-4 text-xs leading-relaxed text-surface-400">
+                  Buka halaman <b className="text-surface-200">Komik Offline</b> untuk membaca tanpa koneksi internet.
+                </p>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    onClick={() => setOfflineDone(null)}
+                    className="rounded-lg bg-gradient-to-r from-brand-600 to-pink-600 px-4 py-2 text-xs font-semibold text-white transition-all hover:brightness-110"
+                  >
+                    Selesai
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 text-red-400">
+                    <AlertCircle size={20} />
+                  </span>
+                  <h3 className="text-sm font-bold text-surface-50">Gagal Mengunduh</h3>
+                </div>
+                <p className="mt-4 text-xs leading-relaxed text-red-300/90">{offlineError || 'Terjadi kesalahan saat mengunduh komik.'}</p>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    onClick={() => setOfflineError('')}
+                    className="rounded-lg border border-surface-700 px-4 py-2 text-xs font-semibold text-surface-300 transition-colors hover:bg-surface-800"
+                  >
+                    Tutup
+                  </button>
+                  <button
+                    onClick={() => { setOfflineError(''); void startOfflineDownload() }}
+                    className="rounded-lg bg-brand-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-500"
+                  >
+                    Coba Lagi
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Konfirmasi hapus offline */}
+      {removeConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setRemoveConfirm(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-surface-700 bg-surface-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15">
+                <Trash2 size={18} className="text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-surface-50">Hapus dari Offline?</h3>
+                <p className="mt-0.5 text-xs text-surface-400">Komik dan seluruh halamannya akan dihapus dari penyimpanan offline.</p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setRemoveConfirm(false)}
+                className="rounded-lg border border-surface-700 px-4 py-2 text-xs font-semibold text-surface-300 transition-colors hover:bg-surface-800"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => void removeOffline()}
+                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete confirmation modal */}
       {deletingCommentId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setDeletingCommentId(null)}>

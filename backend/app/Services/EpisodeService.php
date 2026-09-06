@@ -18,7 +18,25 @@ class EpisodeService
      */
     public function create(Comic $comic, array $data): Episode
     {
-        $number = $data['number'] ?? ($comic->episodes()->withTrashed()->max('number') + 1);
+        // Nomor episode otomatis TIDAK memperhitungkan episode yang sudah
+        // dihapus — episode yang dihapus dianggap hilang, sehingga nomornya
+        // bisa dipakai lagi (mis. episode 1 bisa dibuat ulang).
+        $number = $data['number'] ?? ($comic->episodes()->max('number') + 1);
+
+        // Kalau nomor ini masih "ditempati" oleh episode yang sudah dihapus
+        // (soft delete), hapus permanen episode lama itu agar nomornya bebas
+        // dan episode baru bisa dibuat. Episode yang sudah dihapus tidak
+        // boleh menghalangi upload episode baru.
+        $trashed = Episode::onlyTrashed()
+            ->where('comic_id', $comic->id)
+            ->where('number', $number)
+            ->get();
+
+        if ($trashed->isNotEmpty()) {
+            foreach ($trashed as $oldEpisode) {
+                $oldEpisode->forceDelete();
+            }
+        }
 
         $episode = $comic->episodes()->create([
             'title' => $data['title'],
@@ -78,7 +96,9 @@ class EpisodeService
     }
 
     /**
-     * Publish episode — wajib memiliki minimal 1 halaman.
+     * Setujui & terbitkan episode oleh admin — wajib memiliki minimal 1 halaman.
+     * Komik tidak otomatis terbit di sini; persetujuan komik ditangani
+     * oleh controller admin agar status verifikasi tetap konsisten.
      */
     public function publish(Episode $episode): Episode
     {
@@ -90,12 +110,6 @@ class EpisodeService
 
         $episode->update([
             'status' => Episode::STATUS_PUBLISHED,
-            'published_at' => now(),
-        ]);
-
-        // Komik dianggap published begitu punya episode yang rilis
-        $episode->comic()->update([
-            'status' => Comic::STATUS_ONGOING,
             'published_at' => now(),
         ]);
 

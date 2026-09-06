@@ -74,6 +74,7 @@ class MonetizationTest extends TestCase
             'status' => Comic::STATUS_ONGOING,
             'age_rating' => Comic::AGE_TEEN,
             'published_at' => now(),
+            'verification_status' => 'approved',
         ]);
         $comic->genres()->attach($genre->id);
 
@@ -89,6 +90,7 @@ class MonetizationTest extends TestCase
             'is_premium' => $premium,
             'price_coin' => $price,
             'published_at' => now(),
+            'verification_status' => 'approved',
         ]);
 
         for ($i = 1; $i <= $pages; $i++) {

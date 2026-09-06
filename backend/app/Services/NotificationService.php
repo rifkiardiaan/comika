@@ -23,6 +23,7 @@ class NotificationService
     public const TYPE_COMMENT_REPLY = 'comment_reply';
     public const TYPE_TRANSACTION = 'transaction';
     public const TYPE_SYSTEM = 'system';
+    public const TYPE_SUBSCRIPTION_EXPIRING = 'subscription_expiring';
 
     /**
      * Kirim satu notifikasi ke seorang user (in-app + web push bila aktif).
@@ -112,6 +113,7 @@ class NotificationService
             self::TYPE_COMIC_UPDATE => sprintf('Status "%s" diperbarui', $data['comic_title'] ?? 'Komik'),
             self::TYPE_COMMENT_REPLY => 'Komentarmu dibalas',
             self::TYPE_TRANSACTION => isset($data['coins']) ? 'Pembelian koin berhasil' : 'Penarikan dana diperbarui',
+            self::TYPE_SUBSCRIPTION_EXPIRING => 'Langganan Segera Habis!',
             default => 'Notifikasi COMIKA',
         };
     }
@@ -128,6 +130,11 @@ class NotificationService
             self::TYPE_TRANSACTION => isset($data['coins'])
                 ? sprintf('%s koin ditambahkan ke dompetmu', $data['coins'])
                 : sprintf('Status penarikan: %s', $this->statusLabel((string) ($data['status'] ?? ''))),
+            self::TYPE_SUBSCRIPTION_EXPIRING => sprintf(
+                'Langganan %s kamu berakhir dalam %d hari. Perpanjang sekarang!',
+                strtoupper($data['tier'] ?? ''),
+                $data['days_remaining'] ?? 0
+            ),
             default => '',
         };
     }
@@ -145,6 +152,7 @@ class NotificationService
             ),
             self::TYPE_COMIC_UPDATE, self::TYPE_COMMENT_REPLY => sprintf('/comic/%s', $data['comic_id'] ?? ''),
             self::TYPE_TRANSACTION => '/wallet',
+            self::TYPE_SUBSCRIPTION_EXPIRING => '/premium',
             default => '/notifications',
         };
     }

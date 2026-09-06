@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/update_service.dart';
@@ -17,8 +15,8 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo info) {
     barrierDismissible: !info.latestVersion.startsWith('2.'), // force update untuk major
     barrierLabel: 'Update',
     transitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (_, __, ___) => _UpdateDialogBody(info: info),
-    transitionBuilder: (_, anim, __, child) {
+    pageBuilder: (_, _, _) => _UpdateDialogBody(info: info),
+    transitionBuilder: (_, anim, _, child) {
       return ScaleTransition(
         scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
         child: FadeTransition(opacity: anim, child: child),

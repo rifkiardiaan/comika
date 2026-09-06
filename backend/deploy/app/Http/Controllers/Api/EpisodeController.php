@@ -12,13 +12,15 @@ use App\Models\Episode;
 use App\Models\EpisodeUnlock;
 use App\Models\Subscription;
 use App\Models\ReadingHistory;
+use App\Services\ActivityLogService;
 use App\Services\EpisodeService;
 use App\Services\GamificationService;
-use App\Services\NotificationService;
 use App\Services\ReadingHistoryService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class EpisodeController extends Controller
 {
@@ -36,6 +38,15 @@ class EpisodeController extends Controller
         // Guard sanctum eksplisit: route publik, token opsional
         $user = $request->user('sanctum');
         $isOwner = $user?->id === $comic->creator_id;
+
+        // Komik yang belum disetujui & diterbitkan admin tidak boleh diakses publik
+        if (! $isOwner && (! $comic->published_at || $comic->verification_status !== Comic::VERIFICATION_APPROVED)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Komik belum diterbitkan.',
+                'errors' => (object) [],
+            ], 404);
+        }
 
         $episodes = $comic->episodes()
             ->withCount('pages')
@@ -87,7 +98,10 @@ class EpisodeController extends Controller
         $user = $request->user('sanctum');
         $isOwner = $user?->id === $episode->comic->creator_id;
 
-        if ($episode->status !== Episode::STATUS_PUBLISHED && ! $isOwner) {
+        $comicIsPublic = $episode->comic->published_at !== null
+            && $episode->comic->verification_status === Comic::VERIFICATION_APPROVED;
+
+        if (! $isOwner && (! $comicIsPublic || $episode->status !== Episode::STATUS_PUBLISHED)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Episode belum dipublikasikan.',
@@ -171,6 +185,14 @@ class EpisodeController extends Controller
     {
         $this->authorize('create', [Episode::class, $comic]);
 
+        // Izin upload dinonaktifkan admin → tidak bisa menambah episode baru
+        if (! $request->user()->canUpload()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Izin upload komik Anda dinonaktifkan oleh admin. Hubungi admin untuk mengaktifkannya kembali.',
+            ], 403);
+        }
+
         // Nomor episode tidak boleh duplikat dalam satu komik
         $request->validate([
             'number' => [
@@ -182,13 +204,35 @@ class EpisodeController extends Controller
                     ->whereNull('deleted_at'),
             ],
         ], [
-            'number.unique' => 'Nomor episode sudah digunakan pada komik ini.',
+            'number.unique' => 'Nomor episode sudah digunakan pada komik ini. Gunakan nomor lain.',
         ]);
 
-        $episode = $this->episodeService->create(
-            $comic,
-            $request->only(['title', 'number', 'is_premium', 'price_coin']),
-        );
+        // Episode pertama (nomor 1) wajib gratis — tidak boleh premium.
+        $requestedNumber = $request->input('number');
+        $isFirstEpisode = (int) $requestedNumber === 1
+            || ($requestedNumber === null && ! Episode::withTrashed()->where('comic_id', $comic->id)->exists());
+
+        if ($request->boolean('is_premium') && $isFirstEpisode) {
+            throw ValidationException::withMessages([
+                'is_premium' => ['Episode pertama (nomor 1) harus gratis untuk pembaca.'],
+            ]);
+        }
+
+        try {
+            $episode = $this->episodeService->create(
+                $comic,
+                $request->only(['title', 'number', 'is_premium', 'price_coin']),
+            );
+        } catch (QueryException $e) {
+            // Nomor episode duplikat di level DB — tampilkan pesan yang ramah.
+            if (str_contains($e->getMessage(), 'episodes_comic_id_number_unique')) {
+                throw ValidationException::withMessages([
+                    'number' => ['Nomor episode sudah digunakan pada komik ini. Gunakan nomor lain.'],
+                ]);
+            }
+
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
@@ -233,30 +277,51 @@ class EpisodeController extends Controller
     }
 
     /**
-     * Publish episode — hanya admin yang bisa publish.
-     * Creator tidak bisa publish sendiri.
+     * Ajukan episode untuk direview admin — hanya creator pemilik komik.
+     * Episode TIDAK langsung tampil publik; baru diterbitkan setelah
+     * admin menyetujui lewat dashboard Laporan Komik.
      */
     public function publish(Request $request, Episode $episode): JsonResponse
     {
-        $this->authorize('publish', $episode);
+        $this->authorize('update', $episode);
 
-        // Hanya admin yang bisa publish
-        if (! $request->user()->isAdmin()) {
+        if ($episode->status === Episode::STATUS_PUBLISHED) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya admin yang bisa mempublikasikan episode. Silakan tunggu approval admin.',
-            ], 403);
+                'message' => 'Episode sudah diterbitkan.',
+            ], 422);
         }
 
-        $published = $this->episodeService->publish($episode);
+        if ($episode->pages()->count() === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Episode harus memiliki minimal 1 halaman sebelum diajukan ke admin.',
+            ], 422);
+        }
 
-        // Beri tahu semua follower komik ada episode baru (blueprint 24)
-        app(NotificationService::class)->notifyNewEpisode($published->load('comic'));
+        // Catatan: sengaja TIDAK menulis kolom rejection_reason di sini —
+        // kolom itu opsional & belum tentu ada di DB produksi. Penolakan
+        // episode men-delete episode, jadi tidak ada alasan tersimpan untuk
+        // dibersihkan. Status pending tetap tersimpan tanpa bergantung kolom itu.
+        $episode->update([
+            'status' => Episode::STATUS_PENDING,
+            'published_at' => null,
+        ]);
+
+        // Riwayat aktivitas: creator mengirim episode untuk direview admin
+        app(ActivityLogService::class)->log(
+            $request->user(),
+            \App\Models\ActivityLog::ACTION_EPISODE_SUBMIT,
+            'Creator mengirim episode ' . $episode->number . ' "' . $episode->title . '" dari komik "' . $episode->comic->title . '" untuk direview admin',
+            $episode,
+            [],
+            $request->ip()
+        );
 
         return response()->json([
             'success' => true,
-            'message' => 'Episode berhasil dipublikasikan.',
-            'data' => new EpisodeResource($published),
+            'message' => 'Episode dikirim ke admin untuk direview. Episode akan tampil setelah disetujui admin.',
+            'data' => new EpisodeResource($episode->fresh()),
         ]);
     }
 }

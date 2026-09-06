@@ -73,23 +73,6 @@ export default function WalletPage() {
     }
   }, [])
 
-  // Handle payment result dari URL params
-  useEffect(() => {
-    const paymentStatus = searchParams.get('payment')
-    if (paymentStatus === 'success') {
-      setNotice('Pembayaran berhasil! Koin telah ditambahkan ke dompet Anda.')
-      fetchAll()
-      setSearchParams({}, { replace: true })
-    } else if (paymentStatus === 'pending') {
-      setNotice('Pembayaran sedang diproses. Koin akan ditambahkan setelah pembayaran dikonfirmasi.')
-      fetchAll()
-      setSearchParams({}, { replace: true })
-    } else if (paymentStatus === 'error') {
-      setError('Pembayaran gagal atau dibatalkan.')
-      setSearchParams({}, { replace: true })
-    }
-  }, [searchParams, setSearchParams])
-
   const fetchAll = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -114,6 +97,23 @@ export default function WalletPage() {
       setLoading(false)
     }
   }, [page, user])
+
+  // Handle payment result dari URL params
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment')
+    if (paymentStatus === 'success') {
+      setNotice('Pembayaran berhasil! Koin telah ditambahkan ke dompet Anda.')
+      fetchAll()
+      setSearchParams({}, { replace: true })
+    } else if (paymentStatus === 'pending') {
+      setNotice('Pembayaran sedang diproses. Koin akan ditambahkan setelah pembayaran dikonfirmasi.')
+      fetchAll()
+      setSearchParams({}, { replace: true })
+    } else if (paymentStatus === 'error') {
+      setError('Pembayaran gagal atau dibatalkan.')
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams, fetchAll])
 
   // Fetch affiliate summary (only for creators)
   const fetchAffiliateSummary = useCallback(async () => {
@@ -153,6 +153,33 @@ export default function WalletPage() {
     )
   }
 
+  /**
+   * Verifikasi pembayaran ke backend setelah Snap SDK callback.
+   * Polls beberapa kali untuk memastikan transaksi diproses.
+   */
+  const verifyAndRefresh = async (orderId: string, maxRetries = 5) => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const result = await midtrans.verifyPayment(orderId)
+        if (result.coins_credited || result.status === 'success') {
+          await fetchAll()
+          return true
+        }
+        if (result.status === 'failed') {
+          return false
+        }
+        // Status masih pending — tunggu sebentar lalu coba lagi
+        await new Promise((r) => setTimeout(r, 2000))
+      } catch {
+        // Error — coba lagi
+        await new Promise((r) => setTimeout(r, 2000))
+      }
+    }
+    // Semua retry gagal — tetap refresh data
+    await fetchAll()
+    return false
+  }
+
   const handlePurchase = async (pkg: CoinPackage) => {
     setPurchasingId(pkg.id)
     setError('')
@@ -172,11 +199,22 @@ export default function WalletPage() {
       // Buka Midtrans Snap payment popup
       openSnapPayment(result.snap_token, {
         onSuccess: async () => {
-          setNotice(`Pembayaran berhasil! ${pkg.coins.toLocaleString('id-ID')} koin telah ditambahkan ke dompet Anda.`)
-          await fetchAll()
+          setNotice('Memverifikasi pembayaran...')
+          const verified = await verifyAndRefresh(result.order_id)
+          if (verified) {
+            setNotice(`Pembayaran berhasil! ${pkg.coins.toLocaleString('id-ID')} koin telah ditambahkan ke dompet Anda.`)
+          } else {
+            setNotice('Pembayaran berhasil diproses. Koin akan ditambahkan segera.')
+          }
         },
-        onPending: () => {
-          setNotice('Pembayaran sedang diproses. Koin akan ditambahkan setelah pembayaran dikonfirmasi.')
+        onPending: async () => {
+          setNotice('Pembayaran sedang diproses. Memverifikasi...')
+          const verified = await verifyAndRefresh(result.order_id)
+          if (verified) {
+            setNotice(`Pembayaran berhasil! ${pkg.coins.toLocaleString('id-ID')} koin telah ditambahkan ke dompet Anda.`)
+          } else {
+            setNotice('Pembayaran sedang diproses. Koin akan ditambahkan setelah pembayaran dikonfirmasi.')
+          }
         },
         onError: () => {
           setError('Pembayaran gagal. Silakan coba lagi.')

@@ -59,6 +59,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'vvip_until' => 'datetime',
         'is_banned' => 'boolean',
         'is_permanently_banned' => 'boolean',
+        'can_upload' => 'boolean',
         'password' => 'hashed',
     ];
 
@@ -78,6 +79,20 @@ class User extends Authenticatable implements MustVerifyEmail
             return $this->is_banned || $this->is_permanently_banned;
         } catch (\Throwable $e) {
             return false;
+        }
+    }
+
+    /**
+     * Izin mengupload konten (komik baru, episode, & halaman).
+     * Dinonaktifkan admin saat komik milik creator diblokir.
+     * Creator tetap bisa login, hanya tidak bisa upload lagi.
+     */
+    public function canUpload(): bool
+    {
+        try {
+            return ($this->can_upload ?? true) === true;
+        } catch (\Throwable $e) {
+            return true;
         }
     }
 

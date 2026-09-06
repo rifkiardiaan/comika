@@ -33,10 +33,11 @@ class PublicCreatorController extends Controller
             ], 404);
         }
 
-        // Komik publik milik creator (sudah terbit)
+        // Komik publik milik creator (sudah terbit & disetujui admin)
         $comics = Comic::query()
             ->where('creator_id', $user->id)
             ->whereNotNull('published_at')
+            ->where('verification_status', Comic::VERIFICATION_APPROVED)
             ->with(['creator', 'genres'])
             ->withCount('episodes')
             ->orderByDesc('view_count')

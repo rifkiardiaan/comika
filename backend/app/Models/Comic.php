@@ -22,9 +22,11 @@ class Comic extends Model
     public const AGE_TEEN = 'remaja';
     public const AGE_ADULT = 'dewasa';
 
+    public const VERIFICATION_DRAFT = 'draft';
     public const VERIFICATION_PENDING = 'pending';
     public const VERIFICATION_APPROVED = 'approved';
     public const VERIFICATION_REJECTED = 'rejected';
+    public const VERIFICATION_BLOCKED = 'blocked';
 
     protected $fillable = [
         'creator_id',

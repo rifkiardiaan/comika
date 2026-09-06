@@ -15,6 +15,7 @@ import { content } from '../services/content'
 import { monetization } from '../services/monetization'
 import { getApiErrorMessage } from '../utils/errors'
 import { auth } from '../services/auth'
+import { dbGetComic } from '../services/offlineDb'
 import { coverEmoji, coverKeyOf } from '../data/mock'
 import { readingTime } from '../utils/format'
 import AdBanner from '../components/AdBanner'
@@ -36,7 +37,8 @@ export default function EpisodeReaderPage() {
   const [balance, setBalance] = useState<number | null>(() => auth.getStoredUser()?.coin_balance ?? null)
   const [failedPages, setFailedPages] = useState<Set<number>>(() => new Set())
 
-  const user = auth.getStoredUser()
+  // Stabilkan referensi user agar tidak berubah tiap render
+  const [user] = useState(() => auth.getStoredUser())
   const isLoggedIn = user !== null
   const isPremium = user?.is_premium ?? false
   const isVvip = user?.is_vvip ?? false
@@ -52,12 +54,68 @@ export default function EpisodeReaderPage() {
       setComic(comicData)
       setEpisode(episodeData)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Gagal memuat episode.'))
+      // Offline / gagal ambil dari server → coba ambil episode dari
+      // penyimpanan offline (IndexedDB) bila pengguna sudah mengunduhnya.
+      const stored = await (async () => {
+        if (!user) return null
+        try {
+          return await dbGetComic(user.id, Number(id))
+        } catch {
+          return null
+        }
+      })()
+      const storedEp = stored?.episodes.find((e) => String(e.id) === String(episodeId))
+      if (stored && storedEp && storedEp.pages.length > 0) {
+        setComic({
+          id: stored.comicId,
+          title: stored.comic.title,
+          synopsis: '',
+          slug: String(stored.comicId),
+          cover_url: null,
+          status: 'ongoing',
+          age_rating: 'semua_umur',
+          rating_avg: 0,
+          rating_count: 0,
+          like_count: 0,
+          view_count: 0,
+          creator: { id: 0, name: '', avatar_url: null },
+          genres: [],
+          episode_count: stored.totalEpisodes,
+          episodes: [],
+          created_at: stored.savedAt,
+        } as unknown as ComicDetail)
+        setEpisode({
+          id: storedEp.id,
+          comic_id: stored.comicId,
+          title: storedEp.title,
+          number: storedEp.number,
+          status: 'published',
+          is_premium: storedEp.is_premium,
+          price_coin: storedEp.is_premium ? 1 : 0,
+          view_count: 0,
+          like_count: 0,
+          published_at: null,
+          created_at: '',
+          is_locked: false,
+          is_unlocked: true,
+          pages: storedEp.pages.map((p) => ({
+            id: p.page_number,
+            episode_id: storedEp.id,
+            page_number: p.page_number,
+            image_url: URL.createObjectURL(p.blob),
+          })),
+          prev: null,
+          next: null,
+        } as EpisodeDetail)
+      } else {
+        setError(getApiErrorMessage(err, 'Gagal memuat episode.'))
+      }
     } finally {
       setLoading(false)
     }
-  }, [id, episodeId])
+  }, [id, episodeId, user])
 
+  // Muat episode saat halaman dibuka (dan saat id berubah)
   useEffect(() => {
     if (id && episodeId) load()
   }, [id, episodeId, load])
@@ -94,6 +152,8 @@ export default function EpisodeReaderPage() {
     }
   }
 
+  // Episode premium yang belum di-unlock: server mengirim 'pages' kosong,
+  // jadi state 'episode' sudah terisi — bukan "lupa terasa loading".
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-950 text-surface-500">
@@ -143,8 +203,9 @@ export default function EpisodeReaderPage() {
   }
 
   // VVIP users: episode locked = treated as unlocked (free access)
+  const isUnlocked = episode.is_unlocked === true || isVvip
   const locked = episode.is_locked === true && !isVvip
-  const pages = episode.pages ?? []
+  const pages = (episode.pages ?? []).filter((p) => p !== null && p !== undefined) as NonNullable<typeof episode.pages>
 
   return (
     <div className="min-h-screen bg-surface-950">
@@ -262,7 +323,14 @@ export default function EpisodeReaderPage() {
             </p>
           </div>
 
-          {pages.length === 0 ? (
+          {!isUnlocked && locked ? (
+            /* kondisi ini seharusnya tertangkap di layar kunci di atas,
+               tapi tetap aman sebagai fallback jika server tidak
+               menyertakan is_locked pada response */
+            <div className="px-4 py-24 text-center text-surface-500 sm:px-0">
+              Episode ini premium dan belum terbuka. Unlock dengan koin atau upgrade ke VVIP.
+            </div>
+          ) : pages.length === 0 ? (
             <div className="px-4 py-24 text-center text-surface-500 sm:px-0">
               Episode ini belum memiliki halaman.
             </div>

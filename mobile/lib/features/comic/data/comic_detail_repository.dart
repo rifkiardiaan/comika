@@ -1,4 +1,5 @@
 import '../../../models/comic.dart';
+import '../../../models/episode.dart';
 import '../../home/data/comic_repository.dart';
 
 /// Repositori khusus layar Detail Komik.
@@ -12,4 +13,7 @@ class ComicDetailRepository {
   Future<bool> toggleFollow(int comicId) => _comics.toggleFollow(comicId);
 
   Future<int> toggleLike(int comicId) => _comics.toggleLike(comicId);
+
+  /// Fetch detail episode (untuk download offline).
+  Future<EpisodeDetail> fetchEpisodeDetail(int episodeId) => _comics.fetchEpisode(episodeId);
 }

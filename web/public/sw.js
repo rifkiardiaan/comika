@@ -1,6 +1,6 @@
 /* Service worker COMIKA — PWA offline caching + web push notification. */
 
-const CACHE_NAME = 'comika-v1'
+const CACHE_NAME = 'comika-v3'
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -10,16 +10,40 @@ const SHELL_ASSETS = [
   '/manifest.json',
 ]
 
+/**
+ * Baca /index.html terbaru lalu pre-cache semua aset build (JS/CSS) yang
+ * dirujuknya. Setiap deploy aset diberi hash baru, sehingga pengambilan ini
+ * membuat bundel versi terbaru ikut tersimpan untuk akses offline.
+ */
+async function precacheLatestShell(cache) {
+  try {
+    const res = await fetch('/index.html')
+    if (!res.ok) return
+    const html = await res.text()
+    const assetPaths = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1])
+    await Promise.allSettled(assetPaths.map((p) => cache.add(p)))
+  } catch {
+    // Gagal ambil shell — abaikan, runtime caching tetap bekerja.
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)).then(() => self.skipWaiting()),
+    (async () => {
+      const cache = await caches.open(CACHE_NAME)
+      await cache.addAll(SHELL_ASSETS)
+      // Amankan bundle aplikasi (JS/CSS hasil build) langsung saat install,
+      // bukan menunggu runtime caching. Ini menjamin app shell lengkap
+      // tersedia offline setelah kunjungan pertama (termasuk untuk APK/WebView).
+      await precacheLatestShell(cache)
+      await self.skipWaiting()
+    })(),
   )
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Hapus cache lama
       const keys = await caches.keys()
       await Promise.all(
         keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
@@ -29,26 +53,57 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-// Network-first strategy for API, cache-first for static assets
+/**
+ * Strategi caching:
+ * - Navigasi (rute SPA): coba network, bila gagal → sajikan index.html dari cache
+ *   agar aplikasi tetap bisa dibuka offline (halaman Komik Offline).
+ * - Aset statis: cache-first, lalu simpan hasil network untuk kunjungan berikutnya.
+ * - API (/api) & gambar /storage TIDAK dicache di sini (gambar komik offline
+ *   dikelola lewat IndexedDB di aplikasi).
+ */
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
-  // Skip non-GET and API requests
-  if (request.method !== 'GET' || url.pathname.startsWith('/api/')) return
+  if (request.method !== 'GET') return
+
+  // Navigasi antar halaman SPA
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone()
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put('/index.html', clone))
+              .catch(() => {})
+          }
+          return response
+        })
+        .catch(() =>
+          caches.match('/index.html').then(
+            (cached) => cached || new Response('', { status: 503, statusText: 'Offline' }),
+          ),
+        ),
+    )
+    return
+  }
+
+  // API & gambar halaman komik tidak di-cache di sini
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/storage/')) return
 
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request)
         .then((response) => {
-          // Cache valid responses
           if (response && response.status === 200 && response.type === 'basic') {
             const clone = response.clone()
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
           }
           return response
         })
-        .catch(() => cached)
+        .catch(() => cached || new Response('', { status: 503, statusText: 'Offline' }))
 
       return cached || fetchPromise
     }),
@@ -70,14 +125,12 @@ self.addEventListener('push', (event) => {
       url = payload.data?.url || url
     }
   } catch {
-    // Payload bukan JSON — tampilkan body mentah bila ada
     body = event.data ? event.data.text() : ''
   }
 
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
-      // Resolve URL relatif terhadap scope service worker
       data: { url: new URL(url, self.registration.scope).href, payload },
       tag: payload.data?.type || 'comika-notification',
       renotify: false,
@@ -85,7 +138,7 @@ self.addEventListener('push', (event) => {
   )
 })
 
-/** Klik notifikasi → buka tab tujuan (atau fokus tab yang sudah ada). */
+/** Klik notifikasi → buka tab tujuan. */
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 

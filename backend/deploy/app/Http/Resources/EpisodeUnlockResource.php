@@ -2,11 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\BuildsStorageUrls;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class EpisodeUnlockResource extends JsonResource
 {
+    use BuildsStorageUrls;
+
     /**
      * @return array<string, mixed>
      */
@@ -26,9 +29,7 @@ class EpisodeUnlockResource extends JsonResource
                 'title' => $this->episode->title,
                 'comic_id' => $this->episode->comic_id,
                 'comic_title' => $this->episode->comic?->title,
-                'cover_url' => $this->episode->comic?->cover_url
-                    ? asset('storage/'.$this->episode->comic->cover_url)
-                    : null,
+                'cover_url' => $this->storageUrl($request, $this->episode->comic?->cover_url),
             ];
         }
 

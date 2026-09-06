@@ -19,7 +19,19 @@ class UpdateEpisodeRequest extends FormRequest
         return [
             'title' => ['sometimes', 'required', 'string', 'max:140'],
             'is_premium' => ['sometimes', 'boolean'],
-            'price_coin' => ['required_if:is_premium,true', 'integer', 'min:1', 'max:10000'],
+            // Episode gratis boleh tanpa harga koin (atau 0). Minimal 1 koin
+            // hanya diberlakukan saat episode premium.
+            'price_coin' => [
+                'nullable',
+                'required_if:is_premium,true',
+                'integer',
+                'max:10000',
+                function ($attribute, $value, $fail) {
+                    if ($this->boolean('is_premium') && (int) $value < 1) {
+                        $fail('Harga koin minimal 1 untuk episode premium.');
+                    }
+                },
+            ],
         ];
     }
 }

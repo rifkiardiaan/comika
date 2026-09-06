@@ -76,6 +76,48 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Get subscription history for the current user.
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $subscriptions = Subscription::where('user_id', $request->user()->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->integer('per_page', 20));
+
+        $data = collect($subscriptions->items())->map(fn ($sub) => [
+            'id' => $sub->id,
+            'plan' => $sub->plan,
+            'plan_name' => match ($sub->plan) {
+                'monthly' => 'Premium Bulanan',
+                'yearly' => 'Premium Tahunan',
+                'vvip_monthly' => 'VVIP Bulanan',
+                'vvip_yearly' => 'VVIP Tahunan',
+                default => $sub->plan,
+            },
+            'tier' => $sub->isVvip() ? 'vvip' : 'premium',
+            'amount' => (int) $sub->amount,
+            'payment_status' => $sub->payment_status,
+            'starts_at' => $sub->starts_at?->toIso8601String(),
+            'expires_at' => $sub->expires_at?->toIso8601String(),
+            'paid_at' => $sub->paid_at?->toIso8601String(),
+            'is_active' => $sub->isActive(),
+            'days_remaining' => $sub->expires_at && $sub->expires_at->isFuture()
+                ? max(0, now()->diffInDays($sub->expires_at, false))
+                : 0,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'meta' => [
+                'current_page' => $subscriptions->currentPage(),
+                'last_page' => $subscriptions->lastPage(),
+                'total' => $subscriptions->total(),
+            ],
+        ]);
+    }
+
+    /**
      * Get current user's subscription status.
      */
     public function status(Request $request): JsonResponse

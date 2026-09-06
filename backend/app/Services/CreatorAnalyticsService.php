@@ -116,6 +116,7 @@ class CreatorAnalyticsService
                 'episodes',
                 'episodes as published_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_PUBLISHED),
                 'episodes as draft_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_DRAFT),
+                'episodes as pending_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_PENDING),
                 'follows',
                 'comments',
             ])
@@ -137,6 +138,7 @@ class CreatorAnalyticsService
             'episodes',
             'episodes as published_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_PUBLISHED),
             'episodes as draft_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_DRAFT),
+            'episodes as pending_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_PENDING),
             'follows',
             'comments',
             'bookmarks',
@@ -157,6 +159,7 @@ class CreatorAnalyticsService
             'episodes',
             'episodes as published_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_PUBLISHED),
             'episodes as draft_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_DRAFT),
+            'episodes as pending_episodes_count' => fn ($q) => $q->where('status', Episode::STATUS_PENDING),
         ]);
 
         $episodes = $comic->episodes()
@@ -182,6 +185,7 @@ class CreatorAnalyticsService
                 'episodes' => $comic->episodes_count,
                 'published_episodes' => $comic->published_episodes_count,
                 'draft_episodes' => $comic->draft_episodes_count,
+                'pending_episodes' => $comic->pending_episodes_count,
             ],
             'episodes' => $episodes->map(fn (Episode $episode) => [
                 'id' => $episode->id,

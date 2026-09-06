@@ -28,6 +28,9 @@ class ComicService
             'published_at' => null,
         ]);
 
+        // Komik baru LANGSUNG masuk antrian review admin (verification pending),
+        // sehingga muncul di dashboard Laporan Komik. Komik baru tampil publik
+        // setelah admin menyetujui & menerbitkannya.
         // Set verification_status via raw query agar aman saat kolom belum ada
         try {
             DB::table('comics')->where('id', $comic->id)->update(['verification_status' => 'pending']);

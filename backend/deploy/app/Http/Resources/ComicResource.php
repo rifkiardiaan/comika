@@ -2,11 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\BuildsStorageUrls;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class ComicResource extends JsonResource
 {
+    use BuildsStorageUrls;
+
     /**
      * @return array<string, mixed>
      */
@@ -17,9 +20,7 @@ class ComicResource extends JsonResource
             'title' => $this->title,
             'slug' => $this->slug,
             'synopsis' => $this->synopsis,
-            'cover_url' => $this->cover_url
-                ? asset('storage/'.$this->cover_url)
-                : null,
+            'cover_url' => $this->storageUrl($request, $this->cover_url),
             'status' => $this->status,
             'age_rating' => $this->age_rating,
             'rating_avg' => (float) $this->rating_avg,

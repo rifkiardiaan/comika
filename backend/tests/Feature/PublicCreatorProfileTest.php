@@ -47,6 +47,7 @@ class PublicCreatorProfileTest extends TestCase
             'status' => Comic::STATUS_ONGOING,
             'age_rating' => Comic::AGE_TEEN,
             'published_at' => now(),
+            'verification_status' => 'approved',
             'view_count' => 100,
             ...$overrides,
         ]);
@@ -63,6 +64,7 @@ class PublicCreatorProfileTest extends TestCase
             'number' => 1,
             'status' => Episode::STATUS_PUBLISHED,
             'published_at' => now(),
+            'verification_status' => 'approved',
         ]);
         Follow::create(['comic_id' => $comic->id, 'user_id' => $this->reader->id]);
 

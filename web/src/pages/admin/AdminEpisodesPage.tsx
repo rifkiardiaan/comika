@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, ArrowLeft, Eye, FileText, Loader2, Upload } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Eye, FileText, Loader2, Upload, XCircle } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import PageHeader from '../../components/admin/PageHeader'
 import { StatusBadge } from '../../components/admin/Badge'
-import Pagination from '../../components/admin/Pagination'
 import EmptyState from '../../components/admin/EmptyState'
 import { admin, getApiErrorMessage } from '../../services/admin'
 import { formatNumber } from '../../utils/format'
@@ -12,7 +11,7 @@ interface Episode {
   id: number
   number: number
   title: string
-  status: 'draft' | 'published'
+  status: 'draft' | 'pending' | 'published'
   is_premium: boolean
   price_coin: number
   view_count: number
@@ -25,6 +24,8 @@ interface Episode {
 interface ComicInfo {
   id: number
   title: string
+  verification_status: 'draft' | 'pending' | 'approved' | 'rejected' | string
+  published_at: string | null
 }
 
 export default function AdminEpisodesPage() {
@@ -85,6 +86,23 @@ export default function AdminEpisodesPage() {
         title={`Episode — ${comic?.title ?? 'Memuat...'}`}
         subtitle={`Kelola dan publish episode untuk komik #${comicId}`}
       />
+
+      {/* Komik harus disetujui & diterbitkan dulu sebelum episode boleh dipublish */}
+      {comic && !(comic.verification_status === 'approved' && comic.published_at) && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-5 py-4">
+          <XCircle size={18} className="mt-0.5 shrink-0 text-amber-400" />
+          <div>
+            <p className="text-sm font-semibold text-amber-300">Komik Belum Disetujui</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-amber-200/80">
+              Episode komik ini belum bisa diterbitkan. Setujui & terbitkan komik terlebih dahulu di{' '}
+              <Link to="/admin/comics" className="font-semibold text-amber-200 underline underline-offset-2">
+                Laporan Komik
+              </Link>{' '}
+              (klik <b>Publish</b> pada kartu komik), baru kembali ke halaman ini untuk menyetujui setiap episode.
+            </p>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-300">
@@ -160,20 +178,28 @@ export default function AdminEpisodesPage() {
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {ep.status === 'draft' && (
-                        <button
-                          onClick={() => publishEpisode(ep)}
-                          disabled={publishBusyId === ep.id}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/10 disabled:opacity-50"
-                          title="Publish episode"
-                        >
-                          {publishBusyId === ep.id ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <Upload size={14} />
-                          )} Publish
-                        </button>
-                      )}
+                      {(ep.status === 'draft' || ep.status === 'pending') &&
+                        (comic && comic.verification_status === 'approved' && comic.published_at ? (
+                          <button
+                            onClick={() => publishEpisode(ep)}
+                            disabled={publishBusyId === ep.id}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/10 disabled:opacity-50"
+                            title={ep.status === 'pending' ? 'Setujui episode yang diajukan creator' : 'Publish episode'}
+                          >
+                            {publishBusyId === ep.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <Upload size={14} />
+                            )} {ep.status === 'pending' ? 'Setujui' : 'Publish'}
+                          </button>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-300/80"
+                            title="Setujui komik terlebih dahulu (Laporan Komik) sebelum menerbitkan episode"
+                          >
+                            <XCircle size={14} /> Setujui Komik Dulu
+                          </span>
+                        ))}
                       {ep.status === 'published' && (
                         <span className="text-xs text-emerald-400">✓ Terbit</span>
                       )}

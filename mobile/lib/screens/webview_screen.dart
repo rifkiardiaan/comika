@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import '../services/connectivity_service.dart';
 
 /// URL web app COMIKA.
 /// Ganti ke domain production setelah deploy.
@@ -28,7 +29,14 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   void initState() {
     super.initState();
+    _listenConnectivity();
     _initWebView();
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    super.dispose();
   }
 
   void _initWebView() {
@@ -63,7 +71,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
           _injectStatusBarFix();
         },
         onWebResourceError: (error) {
-          if (mounted) {
+          if (!mounted) return;
+          // Hanya navigasi halaman utama yang fatal. Error dari sub-resource
+          // (mis. panggilan API yang gagal saat offline) TIDAK boleh menutupi
+          // web app — halaman komik offline tetap bisa dibuka dari cache.
+          if (error.isForMainFrame == true) {
             setState(() {
               _isLoading = false;
               _hasError = true;
@@ -113,6 +125,28 @@ class _WebViewScreenState extends State<WebViewScreen> {
       _isLoading = true;
     });
     _controller.loadRequest(Uri.parse(kWebAppUrl));
+  }
+
+  /// Navigasi langsung ke halaman Komik Offline — berguna saat offline karena
+  /// komik yang sudah didownload tetap bisa dibaca tanpa koneksi.
+  void _openOfflineComics() {
+    setState(() {
+      _hasError = false;
+      _isLoading = true;
+    });
+    final base = kWebAppUrl.endsWith('/') ? kWebAppUrl : '$kWebAppUrl/';
+    _controller.loadRequest(Uri.parse('${base}komik-offline'));
+  }
+
+  /// Coba muat ulang otomatis saat koneksi kembali pulih.
+  StreamSubscription<bool>? _connectivitySub;
+
+  void _listenConnectivity() {
+    _connectivitySub = ConnectivityService.instance.onStatusChanged.listen((online) {
+      if (online && _hasError && mounted) {
+        _retry();
+      }
+    });
   }
 
   @override
@@ -275,6 +309,17 @@ class _WebViewScreenState extends State<WebViewScreen> {
                               color: Color(0xFF9CA3AF),
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            ConnectivityService.instance.isOnline
+                                ? 'Aplikasi akan mencoba lagi otomatis saat koneksi pulih.'
+                                : 'Tidak ada koneksi internet. Komik yang sudah didownload tetap bisa dibuka lewat Komik Offline setelah aplikasi pernah dimuat sebelumnya.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
                           const SizedBox(height: 24),
                           GestureDetector(
                             onTap: _retry,
@@ -299,6 +344,42 @@ class _WebViewScreenState extends State<WebViewScreen> {
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
                                 ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Buka komik offline — tetap bisa dibaca tanpa internet
+                          GestureDetector(
+                            onTap: _openOfflineComics,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0xFF3B82F6),
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.bookmark_outline_rounded,
+                                    size: 16,
+                                    color: Color(0xFF3B82F6),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Buka Komik Offline',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF3B82F6),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

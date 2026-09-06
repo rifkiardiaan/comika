@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Download,
-  ExternalLink,
   Shield,
   Smartphone,
   Star,
@@ -45,13 +44,13 @@ export default function DownloadPage() {
       const { data } = await api.get<{ data: VersionInfo }>(VERSION_URL)
       setVersionInfo(data.data)
     } catch {
-      // Fallback
+      // Fallback — tetap tampilkan tombol download
       setVersionInfo({
         version: '1.0.0',
         min_android: '7.0',
         file_size: 0,
-        file_size_human: '~82 MB',
-        available: false,
+        file_size_human: '',
+        available: true,
         download_url: APK_URL,
       })
     } finally {
@@ -61,12 +60,26 @@ export default function DownloadPage() {
 
   const handleDownload = () => {
     setDownloading(true)
-    // Gunakan window.location untuk download langsung
-    window.location.href = APK_URL
+    // Paksa browser mengunduh file (bukan membuka halaman) via anchor sementara.
+    // Atribut download + header Content-Disposition di server membuat file
+    // langsung terunduh secara otomatis tanpa meninggalkan halaman ini.
+    try {
+      const a = document.createElement('a')
+      a.href = APK_URL
+      a.download = 'comika.apk'
+      a.rel = 'noopener'
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    } catch {
+      // Fallback: navigasi langsung ke endpoint download
+      window.location.href = APK_URL
+    }
     setTimeout(() => {
       setDownloading(false)
       setDownloadStarted(true)
-    }, 2000)
+    }, 1200)
   }
 
   const features = [
@@ -118,7 +131,20 @@ export default function DownloadPage() {
         <div className="relative mx-auto max-w-5xl px-4 py-20 text-center sm:py-28">
           {/* App Icon */}
           <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-500 to-pink-500 shadow-2xl shadow-brand-500/30 sm:h-28 sm:w-28">
-            <span className="font-display text-4xl font-bold text-white sm:text-5xl">C</span>
+            <img
+              src="/assets/comika-logo.jpeg"
+              alt="COMIKA Logo"
+              className="h-20 w-20 rounded-2xl object-cover sm:h-24 sm:w-24"
+              onError={(e) => {
+                // Fallback ke huruf C jika gambar gagal dimuat
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const fallback = document.createElement('span')
+                fallback.className = 'font-display text-4xl font-bold text-white sm:text-5xl'
+                fallback.textContent = 'C'
+                target.parentElement?.appendChild(fallback)
+              }}
+            />
           </div>
 
           <h1 className="font-display text-3xl font-bold text-surface-50 sm:text-5xl">
@@ -145,17 +171,16 @@ export default function DownloadPage() {
             </div>
           )}
 
+          {/* APK info */}
+          <p className="mt-2 text-xs text-surface-500">
+            File APK tersedia · Siap diunduh langsung dari server
+          </p>
+
           {/* Download Button */}
           <div className="mt-10 flex flex-col items-center gap-4">
-            {versionInfo && !versionInfo.available && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
-                APK belum tersedia. Silakan hubungi admin untuk upload APK.
-              </div>
-            )}
-
             <button
               onClick={handleDownload}
-              disabled={downloading || !versionInfo?.available}
+              disabled={downloading}
               className="group flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand-600 to-pink-600 px-8 py-4 text-lg font-bold text-white shadow-2xl shadow-brand-600/30 transition-all hover:brightness-110 hover:shadow-brand-500/40 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {downloading ? (
@@ -253,9 +278,10 @@ export default function DownloadPage() {
           <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <button
               onClick={handleDownload}
-              disabled={downloading || !versionInfo?.available}
+              disabled={downloading}
               className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110 disabled:opacity-60"
             >
+              <img src="/assets/comika-logo.jpeg" alt="" className="h-5 w-5 rounded object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
               <Smartphone size={18} />
               Download COMIKA
             </button>
@@ -275,7 +301,18 @@ export default function DownloadPage() {
           <div className="hidden sm:block">
             <div className="flex h-[400px] w-[200px] items-center justify-center rounded-[2rem] border-4 border-surface-700 bg-surface-900 shadow-2xl">
               <div className="text-center">
-                <Smartphone size={48} className="mx-auto text-surface-700" />
+                <img
+                  src="/assets/comika-logo.jpeg"
+                  alt="COMIKA"
+                  className="mx-auto h-16 w-16 rounded-2xl object-cover shadow-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                    const fallback = document.createElement('div')
+                    fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-surface-700"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>'
+                    target.parentElement?.appendChild(fallback)
+                  }}
+                />
                 <p className="mt-3 text-xs text-surface-600">COMIKA App</p>
               </div>
             </div>

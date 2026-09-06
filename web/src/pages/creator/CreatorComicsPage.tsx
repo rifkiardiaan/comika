@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertCircle,
+  Ban,
   BookOpen,
   CheckCircle2,
   Clock,
   Eye,
-  FilePlus2,
   Loader2,
+  Lock,
   Pencil,
   Plus,
   Send,
@@ -55,6 +56,15 @@ const emptyForm: ComicForm = { title: '', synopsis: '', status: 'ongoing', age_r
 
 function VerificationBadge({ status, reason }: { status: VerificationStatus; reason?: string | null }) {
   switch (status) {
+    case 'draft':
+      return (
+        <span
+          className="inline-flex items-center gap-1 rounded-full bg-surface-800 px-2.5 py-1 text-[10px] font-bold text-surface-300"
+          title="Draft — belum dikirim ke admin. Klik komik lalu tekan Ajukan Review untuk mengirimnya."
+        >
+          <BookOpen size={10} /> Draft
+        </span>
+      )
     case 'approved':
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300">
@@ -68,6 +78,15 @@ function VerificationBadge({ status, reason }: { status: VerificationStatus; rea
           title={reason || 'Ditolak admin'}
         >
           <X size={10} /> Ditolak
+        </span>
+      )
+    case 'blocked':
+      return (
+        <span
+          className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2.5 py-1 text-[10px] font-bold text-orange-300"
+          title={reason || 'Diblokir admin'}
+        >
+          <Ban size={10} /> Diblokir
         </span>
       )
     case 'pending':
@@ -105,6 +124,9 @@ export default function CreatorComicsPage() {
   // Cek apakah creator diblokir
   const isBlocked = (user as any)?.is_banned || (user as any)?.is_permanently_banned
 
+  // Cek apakah izin upload dinonaktifkan admin (komik diblokir) — masih bisa login
+  const uploadRestricted = (user as any)?.can_upload === false
+
   const fetchComics = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -132,6 +154,10 @@ export default function CreatorComicsPage() {
   const openCreate = () => {
     if (isBlocked) {
       setNotice('Akun Anda sedang diblokir. Anda tidak dapat mengunggah komik baru.')
+      return
+    }
+    if (uploadRestricted) {
+      setNotice('Izin upload komik Anda dinonaktifkan oleh admin. Hubungi admin untuk mengaktifkannya kembali.')
       return
     }
     setEditing(null)
@@ -180,7 +206,7 @@ export default function CreatorComicsPage() {
         setNotice(`Komik "${form.title.trim()}" berhasil diperbarui.`)
       } else {
         await content.createComic(payload)
-        setNotice(`Komik "${form.title.trim()}" berhasil diunggah! Komik akan ditinjau oleh admin sebelum diterbitkan.`)
+        setNotice(`Komik "${form.title.trim()}" berhasil diunggah & otomatis masuk antrian review admin di Laporan Komik. Episode yang dikirim akan tampil setelah disetujui admin.`)
       }
       setModal(null)
       await fetchComics()
@@ -215,7 +241,7 @@ export default function CreatorComicsPage() {
         actions={
           <button
             onClick={openCreate}
-            disabled={!!isBlocked}
+            disabled={!!isBlocked || uploadRestricted}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Send size={16} /> Upload Komik
@@ -236,11 +262,24 @@ export default function CreatorComicsPage() {
         </div>
       )}
 
+      {/* Upload permission notice */}
+      {!isBlocked && uploadRestricted && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-sky-500/30 bg-sky-500/5 px-5 py-4">
+          <Lock size={20} className="shrink-0 text-sky-400" />
+          <div>
+            <p className="text-sm font-semibold text-sky-300">Izin Upload Dinonaktifkan</p>
+            <p className="mt-0.5 text-xs text-sky-400/80">
+              Akun Anda masih aktif, namun izin upload komik baru dinonaktifkan oleh admin (salah satu komik Anda diblokir). Anda masih bisa mengelola komik yang sudah ada.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Info banner */}
       <div className="mb-6 flex items-center gap-3 rounded-xl border border-brand-500/30 bg-brand-500/5 px-5 py-4">
         <Shield size={18} className="shrink-0 text-brand-300" />
         <p className="text-xs text-brand-200/80">
-          Komik yang Anda unggah akan masuk ke review admin. Admin akan menyetujui, menolak, atau memblokir komik Anda sebelum diterbitkan.
+          Komik yang Anda unggah <b className="font-semibold text-brand-100">otomatis masuk antrian review admin</b> (Pending) di dashboard Laporan Komik dan belum tampil publik. Episode yang Anda kirim (Menunggu Review) juga baru tampil setelah disetujui admin satu per satu.
         </p>
       </div>
 
@@ -324,7 +363,7 @@ export default function CreatorComicsPage() {
                               {c.title}
                             </p>
                             <p className="text-xs text-surface-500">
-                              {c.published_episodes_count} terbit · {c.draft_episodes_count} draft · {c.comments_count} komentar
+                              {c.published_episodes_count} terbit{c.pending_episodes_count ? ` · ${c.pending_episodes_count} menunggu review` : ''} · {c.draft_episodes_count} draft · {c.comments_count} komentar
                             </p>
                             {c.rejection_reason && c.verification_status === 'rejected' && (
                               <p className="mt-0.5 max-w-48 truncate text-[10px] text-red-400" title={c.rejection_reason}>
@@ -459,7 +498,7 @@ export default function CreatorComicsPage() {
                 <p className="mt-1 text-xs text-surface-500">
                   {modal === 'edit'
                     ? 'Perbarui detail komik Anda.'
-                    : 'Lengkapi informasi komik. Komik akan ditinjau admin sebelum diterbitkan.'}
+                    : 'Lengkapi informasi komik. Komik langsung masuk review admin di Laporan Komik; episode yang dikirim baru tampil setelah disetujui admin.'}
                 </p>
               </div>
               <button

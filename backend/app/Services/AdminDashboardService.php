@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
 use App\Models\Comic;
 use App\Models\Comment;
 use App\Models\CreatorEarning;
@@ -10,6 +11,7 @@ use App\Models\Report;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class AdminDashboardService
 {
@@ -91,6 +93,40 @@ class AdminDashboardService
             $pendingVerification = 0;
         }
 
+        // Riwayat aktivitas (feature 13) — tabel opsional; aman bila migrasi belum jalan
+        $activityStats = ['total' => 0, 'today' => 0, 'last_7_days' => 0, 'by_action' => [], 'recent' => []];
+        if (Schema::hasTable('activity_logs')) {
+            try {
+                $activityStats = [
+                    'total' => (int) ActivityLog::count(),
+                    'today' => (int) ActivityLog::whereDate('created_at', today())->count(),
+                    'last_7_days' => (int) ActivityLog::where('created_at', '>=', now()->subDays(7))->count(),
+                    'by_action' => ActivityLog::query()
+                        ->selectRaw('action, COUNT(*) as total')
+                        ->groupBy('action')
+                        ->orderByDesc('total')
+                        ->limit(8)
+                        ->get()
+                        ->map(fn ($row) => ['action' => $row->action, 'count' => (int) $row->total])
+                        ->values(),
+                    'recent' => ActivityLog::query()
+                        ->with('user:id,name,username,avatar_url')
+                        ->orderByDesc('created_at')
+                        ->limit(5)
+                        ->get()
+                        ->map(fn (ActivityLog $log) => [
+                            'id' => $log->id,
+                            'action' => $log->action,
+                            'description' => $log->description,
+                            'user_name' => $log->user?->name,
+                            'created_at' => $log->created_at?->toIso8601String(),
+                        ])->values(),
+                ];
+            } catch (\Throwable $e) {
+                // Tabel ada tapi query gagal — biarkan statistik kosong
+            }
+        }
+
         return [
             'users' => [
                 'total' => (int) $userStats->users_count,
@@ -130,7 +166,9 @@ class AdminDashboardService
                 'id' => $comic->id,
                 'title' => $comic->title,
                 'slug' => $comic->slug,
-                'cover_url' => $comic->cover_url ? asset('storage/'.$comic->cover_url) : null,
+                'cover_url' => $comic->cover_url
+                    ? request()->getSchemeAndHttpHost().'/storage/'.ltrim($comic->cover_url, '/')
+                    : null,
                 'status' => $comic->status,
                 'creator_name' => $comic->creator?->name,
                 'view_count' => $comic->view_count,
@@ -144,6 +182,7 @@ class AdminDashboardService
                 'total_unlocks' => $totalUnlocks,
             ],
             'pending_verification' => $pendingVerification,
+            'activities' => $activityStats,
             'recent_reports' => $recentReports->map(fn (Report $report) => [
                 'id' => $report->id,
                 'reason' => $report->reason,

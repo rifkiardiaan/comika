@@ -52,10 +52,25 @@ class ApiService {
       _request('PUT', path, body);
 
   Future<Map<String, dynamic>> patch(String path, [Map<String, dynamic>? body]) =>
-      _request('PATCH', path, body);
+      _request('PATCH', path, body);  Future<Map<String, dynamic>> delete(String path) => _request('DELETE', path);
 
-  Future<Map<String, dynamic>> delete(String path) =>
-      _request('DELETE', path);
+  /// Download gambar sebagai bytes (untuk offline download).
+  Future<List<int>> downloadImage(String url) async {
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(Uri.parse(url));
+      if (_token != null) {
+        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $_token');
+      }
+      final response = await request.close().timeout(const Duration(seconds: 30));
+      if (response.statusCode >= 400) {
+        throw ApiException('Gagal download gambar (${response.statusCode})', statusCode: response.statusCode);
+      }
+      return await response.fold<List<int>>([], (prev, chunk) => prev..addAll(chunk));
+    } finally {
+      client.close(force: true);
+    }
+  }
 
   /// Upload file (multipart) ke endpoint — untuk avatar, cover, banner, dll.
   Future<Map<String, dynamic>> upload(

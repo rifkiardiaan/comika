@@ -4,8 +4,8 @@ import {
   AlertCircle,
   BookOpen,
   Eye,
-  Flag,
   Heart,
+  History,
   Loader2,
   Mail,
   MessageSquare,
@@ -22,7 +22,7 @@ import { listApplications } from '../../services/creatorApplication'
 import type { DashboardStats } from '../../types'
 import type { CreatorApplication } from '../../services/creatorApplication'
 import { coverEmoji, coverKeyOf, coverStyle } from '../../data/mock'
-import { formatDate, formatNumber } from '../../utils/format'
+import { formatDate, formatNumber, timeAgo } from '../../utils/format'
 
 function StatCard({
   label,
@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
     )
   }
 
-  const { users, comics, episodes, comments, reports, engagement, revenue, pending_verification } = stats
+  const { users, comics, episodes, comments, engagement, revenue, pending_verification } = stats
   const pendingCreatorApps = creatorApps // already filtered by API to 'pending'
 
   return (
@@ -162,13 +162,7 @@ export default function AdminDashboardPage() {
           tone="bg-pink-500/15 text-pink-300"
           sub={`${episodes.published} telah terbit`}
         />
-        <StatCard
-          label="Laporan Masuk"
-          value={reports.pending.toLocaleString('id-ID')}
-          icon={Flag}
-          tone="bg-amber-500/15 text-amber-300"
-          sub="menunggu moderasi"
-        />
+
       </div>
 
       {/* Revenue + pending verification */}
@@ -196,7 +190,7 @@ export default function AdminDashboardPage() {
         />
       </div>
 
-      {/* Engagement + comments */}
+      {/* Engagement + comments + aktivitas */}
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Total Views" value={formatNumber(engagement.total_views)} icon={Eye} tone="bg-emerald-500/15 text-emerald-300" />
         <StatCard label="Total Likes" value={formatNumber(engagement.total_likes)} icon={Heart} tone="bg-rose-500/15 text-rose-300" />
@@ -207,6 +201,43 @@ export default function AdminDashboardPage() {
           tone="bg-violet-500/15 text-violet-300"
           sub={`${users.new_today} user baru hari ini`}
         />
+      </div>
+
+      {/* Riwayat aktivitas (feature 13) */}
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Aktivitas Hari Ini"
+          value={stats.activities.today.toLocaleString('id-ID')}
+          icon={History}
+          tone="bg-violet-500/15 text-violet-300"
+          sub={`${stats.activities.total.toLocaleString('id-ID')} total · ${stats.activities.last_7_days.toLocaleString('id-ID')} dalam 7 hari`}
+        />
+        <div className="rounded-2xl border border-surface-800 bg-surface-900 p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-surface-500">Aksi Terbanyak</p>
+          {stats.activities.by_action.length === 0 ? (
+            <p className="mt-3 text-sm text-surface-600">Belum ada data.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {stats.activities.by_action.slice(0, 4).map((a) => (
+                <li key={a.action} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate text-surface-300">{a.action.replace(/_/g, ' ')}</span>
+                  <span className="rounded-full bg-surface-800 px-2 py-0.5 text-xs font-semibold text-surface-200">
+                    {a.count.toLocaleString('id-ID')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="flex flex-col justify-center rounded-2xl border border-surface-800 bg-surface-900 p-5">
+          <p className="text-sm text-surface-400">Pantau upload, publish, pembelian, download offline & moderasi di satu tempat.</p>
+          <Link
+            to="/admin/activities"
+            className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110"
+          >
+            <History size={15} /> Buka Riwayat Aktivitas
+          </Link>
+        </div>
       </div>
 
       {/* Recent lists */}
@@ -302,6 +333,33 @@ export default function AdminDashboardPage() {
                     </p>
                   </div>
                   <StatusBadge status={c.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Recent activities */}
+        <section className={recentListCard}>
+          <div className="flex items-center justify-between border-b border-surface-800 px-5 py-4">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-surface-200">
+              <History size={15} className="text-violet-400" /> Aktivitas Terbaru
+            </h2>
+            <Link to="/admin/activities" className="text-xs font-medium text-brand-300 hover:text-brand-200">
+              Lihat semua
+            </Link>
+          </div>
+          {stats.activities.recent.length === 0 ? (
+            <div className="p-5"><EmptyState message="Belum ada aktivitas tercatat." /></div>
+          ) : (
+            <ul className="divide-y divide-surface-800/60">
+              {stats.activities.recent.map((a) => (
+                <li key={a.id} className="px-5 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-medium text-surface-100">{a.user_name ?? 'Sistem'}</p>
+                    <span className="whitespace-nowrap text-[11px] text-surface-500">{timeAgo(a.created_at ?? '')}</span>
+                  </div>
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-surface-400">{a.description}</p>
                 </li>
               ))}
             </ul>

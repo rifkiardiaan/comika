@@ -3,11 +3,32 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../models/comic.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../services/download_service.dart';
+import '../../comic/presentation/comic_detail_screen.dart';
 
-class ComicCard extends StatelessWidget {
+class ComicCard extends StatefulWidget {
   final Comic comic;
 
   const ComicCard({super.key, required this.comic});
+
+  @override
+  State<ComicCard> createState() => _ComicCardState();
+}
+
+class _ComicCardState extends State<ComicCard> {
+  bool _hasDownload = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDownload();
+  }
+
+  Future<void> _checkDownload() async {
+    final items = await DownloadService.instance.getAll();
+    final has = items.any((e) => e.comicId == widget.comic.id);
+    if (mounted) setState(() => _hasDownload = has);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,20 +51,65 @@ class ComicCard extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: _buildCoverImage(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildCoverImage(),
+                  // Download indicator badge
+                  if (_hasDownload)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.greenAccent.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.bookmark, size: 10, color: Colors.black),
+                      ),
+                    ),
+                  // Download button
+                  Positioned(
+                    right: 6,
+                    bottom: 6,
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ComicDetailScreen(comicId: widget.comic.id),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _hasDownload ? Icons.bookmark : Icons.bookmark_border,
+                          size: 12,
+                          color: _hasDownload ? Colors.greenAccent : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          comic.title,
+          widget.comic.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 2),
         Text(
-          '${comic.creatorName} · ${Formatters.compact(comic.viewCount)} dibaca',
+          '${widget.comic.creatorName} · ${Formatters.compact(widget.comic.viewCount)} dibaca',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
@@ -53,7 +119,7 @@ class ComicCard extends StatelessWidget {
   }
 
   Widget _buildCoverImage() {
-    final coverUrl = ApiConstants.assetUrl(comic.coverUrl);
+    final coverUrl = ApiConstants.assetUrl(widget.comic.coverUrl);
 
     if (coverUrl.isNotEmpty) {
       return Stack(
@@ -84,7 +150,7 @@ class ComicCard extends StatelessWidget {
                   const Icon(Icons.star, size: 10, color: Colors.amber),
                   const SizedBox(width: 2),
                   Text(
-                    comic.ratingAvg.toStringAsFixed(1),
+                    widget.comic.ratingAvg.toStringAsFixed(1),
                     style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -134,7 +200,7 @@ class ComicCard extends StatelessWidget {
                   const Icon(Icons.star, size: 10, color: Colors.amber),
                   const SizedBox(width: 2),
                   Text(
-                    comic.ratingAvg.toStringAsFixed(1),
+                    widget.comic.ratingAvg.toStringAsFixed(1),
                     style: const TextStyle(fontSize: 9, color: Colors.white),
                   ),
                 ],
@@ -146,5 +212,5 @@ class ComicCard extends StatelessWidget {
     );
   }
 
-  String _initial() => comic.title.isEmpty ? 'C' : comic.title.characters.first.toUpperCase();
+  String _initial() => widget.comic.title.isEmpty ? 'C' : widget.comic.title.characters.first.toUpperCase();
 }

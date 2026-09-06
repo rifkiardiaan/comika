@@ -34,12 +34,11 @@ class EpisodePolicy
     }
 
     /**
-     * Hanya admin yang dapat publish episode.
-     * Creator tidak bisa publish sendiri — harus menunggu approval admin.
+     * Creator pemilik komik atau admin bisa publish episode.
      */
     public function publish(User $user, Episode $episode): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $this->update($user, $episode);
     }
 
     /**

@@ -71,6 +71,7 @@ class NotificationTest extends TestCase
             'status' => Comic::STATUS_ONGOING,
             'age_rating' => Comic::AGE_TEEN,
             'published_at' => now(),
+            'verification_status' => 'approved',
         ]);
         $comic->genres()->attach($genre->id);
 
@@ -218,8 +219,10 @@ class NotificationTest extends TestCase
 
         Follow::create(['user_id' => $this->reader->id, 'comic_id' => $comic->id]);
 
-        $this->withToken($this->token($this->creator))
-            ->postJson("/api/v1/episodes/{$episode->id}/publish")
+        // Alur moderasi: episode diterbitkan oleh ADMIN (creator hanya
+        // mengirim ke review). Follower mendapat notifikasi episode baru.
+        $this->withToken($this->adminToken())
+            ->postJson("/api/v1/admin/episodes/{$episode->id}/publish")
             ->assertStatus(200)
             ->assertJsonPath('success', true);
 

@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateComicStatusRequest;
 use App\Http\Resources\AdminComicResource;
+use App\Models\ActivityLog;
 use App\Models\Comic;
 use App\Models\CreatorEarning;
 use App\Models\Episode;
+use App\Services\ActivityLogService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,10 +50,22 @@ class AdminComicController extends Controller
 
         // Filter berdasarkan verification_status — handle jika kolom belum ada
         if ($request->filled('verification')) {
-            try {
-                $query->where('verification_status', $request->verification);
-            } catch (\Throwable $e) {
-                // Kolom belum ada — abaikan filter
+            $verification = $request->verification;
+
+            // Page 'Diblokir' → komik dengan status 'blocked' (verification),
+            // benar-benar terpisah dari Ditolak (rejected).
+            if ($verification === 'blocked') {
+                try {
+                    $query->where('verification_status', Comic::VERIFICATION_BLOCKED);
+                } catch (\Throwable $e) {
+                    // Kolom belum ada — abaikan filter
+                }
+            } else {
+                try {
+                    $query->where('verification_status', $verification);
+                } catch (\Throwable $e) {
+                    // Kolom belum ada — abaikan filter
+                }
             }
         }
 
@@ -88,6 +102,10 @@ class AdminComicController extends Controller
                 'comic' => [
                     'id' => $comic->id,
                     'title' => $comic->title,
+                    // Status persetujuan komik — episode baru boleh disetujui
+                    // setelah komik disetujui & diterbitkan (approved + published_at).
+                    'verification_status' => $comic->verification_status ?? 'pending',
+                    'published_at' => $comic->published_at?->toIso8601String(),
                 ],
                 'episodes' => $episodes->map(fn (Episode $ep) => [
                     'id' => $ep->id,
@@ -101,6 +119,9 @@ class AdminComicController extends Controller
                     'page_count' => $ep->pages_count,
                     'comments_count' => $ep->comments()->count(),
                     'published_at' => $ep->published_at?->toIso8601String(),
+                    'rejection_reason' => \Schema::hasColumn('episodes', 'rejection_reason')
+                        ? ($ep->rejection_reason ?? null)
+                        : null,
                 ])->values(),
             ],
         ]);
@@ -131,6 +152,9 @@ class AdminComicController extends Controller
                     'title' => $episode->title,
                     'status' => $episode->status,
                     'is_premium' => $episode->is_premium,
+                    'rejection_reason' => \Schema::hasColumn('episodes', 'rejection_reason')
+                        ? ($episode->rejection_reason ?? null)
+                        : null,
                 ],
                 'pages' => $pages,
             ],
@@ -143,7 +167,9 @@ class AdminComicController extends Controller
      */
     public function publish(Comic $comic): JsonResponse
     {
-        if ($comic->published_at) {
+        // Komik yang sudah disetujui & terbit tidak perlu dipublish ulang.
+        // Komik yang terbit tapi belum disetujui (dari alur lama) tetap bisa disetujui di sini.
+        if ($comic->published_at && $comic->verification_status === Comic::VERIFICATION_APPROVED) {
             return response()->json([
                 'success' => false,
                 'message' => 'Komik sudah dipublikasikan.',
@@ -153,6 +179,7 @@ class AdminComicController extends Controller
         $comic->update([
             'published_at' => now(),
             'verification_status' => Comic::VERIFICATION_APPROVED,
+            'rejection_reason' => null,
         ]);
 
         // Backup: pastikan verification_status terupdate via raw query
@@ -165,20 +192,13 @@ class AdminComicController extends Controller
             // Kolom belum ada — abaikan
         }
 
-        // Publish semua episode yang sudah siap (punya halaman)
-        $draftEpisodes = Episode::where('comic_id', $comic->id)
-            ->where('status', Episode::STATUS_DRAFT)
-            ->whereHas('pages')
-            ->get();
+        // CATATAN: episode TIDAK ikut diterbitkan otomatis di sini.
+        // Persetujuan publish komik dilakukan per episode — admin menyetujui
+        // setiap episode lewat tombol "Setujui" di dashboard Laporan Komik.
+        // Episode berstatus draft/pending hanya tampil publik setelah
+        // disetujui satu per satu oleh admin (AdminComicController::publishEpisode).
 
-        foreach ($draftEpisodes as $episode) {
-            $episode->update([
-                'status' => Episode::STATUS_PUBLISHED,
-                'published_at' => now(),
-            ]);
-        }
-
-        // Notifikasi ke creator bahwa komiknya sudah dipublish
+        // Notifikasi ke creator bahwa komiknya sudah disetujui & diterbitkan
         app(NotificationService::class)->send(
             $comic->creator_id,
             NotificationService::TYPE_COMIC_UPDATE,
@@ -186,8 +206,18 @@ class AdminComicController extends Controller
                 'comic_id' => $comic->id,
                 'comic_title' => $comic->title,
                 'status' => 'published',
-                'message' => 'Komik "' . $comic->title . '" telah dipublikasikan oleh admin.',
+                'message' => 'Komik "' . $comic->title . '" telah disetujui & diterbitkan oleh admin. Setiap episode perlu disetujui terlebih dahulu agar tampil publik.',
             ]
+        );
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            auth()->user(),
+            ActivityLog::ACTION_COMIC_PUBLISH,
+            'Admin menerbitkan komik "' . $comic->title . '"',
+            $comic,
+            [],
+            request()->ip()
         );
 
         return response()->json([
@@ -245,6 +275,20 @@ class AdminComicController extends Controller
             ]
         );
 
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            auth()->user(),
+            $validated['verification_status'] === 'approved'
+                ? ActivityLog::ACTION_COMIC_VERIFY
+                : ActivityLog::ACTION_COMIC_BAN,
+            ($validated['verification_status'] === 'approved'
+                ? 'Admin menyetujui komik "'
+                : 'Admin menolak komik "') . $comic->title . '"',
+            $comic,
+            ['verification_status' => $validated['verification_status'], 'rejection_reason' => $validated['rejection_reason'] ?? null],
+            request()->ip()
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Verifikasi komik berhasil diperbarui.',
@@ -286,9 +330,24 @@ class AdminComicController extends Controller
 
     /**
      * Publish episode — hanya admin yang bisa publish.
+     *
+     * Alur moderasi: komik HARUS disetujui (verification_status = approved &
+     * published_at terisi) terlebih dahulu lewat tombol "Publish" pada kartu
+     * komik, BARU episode-nya boleh disetujui satu per satu di sini.
      */
     public function publishEpisode(Request $request, Episode $episode): JsonResponse
     {
+        $comic = $episode->comic;
+
+        // Komik belum disetujui/diterbitkan → episode belum boleh terbit.
+        // Admin harus menyetujui komik terlebih dahulu (Publish pada kartu komik).
+        if ($comic->verification_status !== Comic::VERIFICATION_APPROVED || ! $comic->published_at) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Setujui komik terlebih dahulu (tombol Publish pada kartu komik) sebelum menerbitkan episode-nya.',
+            ], 422);
+        }
+
         if ($episode->status === Episode::STATUS_PUBLISHED) {
             return response()->json([
                 'success' => false,
@@ -308,10 +367,15 @@ class AdminComicController extends Controller
             'published_at' => now(),
         ]);
 
-        // Komik dianggap published begitu punya episode yang rilis
-        $episode->comic()->update([
-            'status' => 'ongoing',
-            'published_at' => now(),
+        // Kolom rejection_reason opsional — beberapa DB produksi belum punya
+        if (\Schema::hasColumn('episodes', 'rejection_reason')) {
+            $episode->update(['rejection_reason' => null]);
+        }
+
+        // Pastikan komik berstatus ongoing karena sudah punya episode terbit.
+        $comic->update([
+            'status' => Comic::STATUS_ONGOING,
+            'published_at' => $comic->published_at ?? now(),
         ]);
 
         // Notifikasi ke creator
@@ -328,6 +392,19 @@ class AdminComicController extends Controller
             ]
         );
 
+        // Notifikasi ke semua follower komik (episode baru terbit)
+        app(NotificationService::class)->notifyNewEpisode($episode);
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            auth()->user(),
+            ActivityLog::ACTION_EPISODE_PUBLISH,
+            'Admin menerbitkan episode ' . $episode->number . ' "' . $episode->title . '" dari komik "' . $comic->title . '"',
+            $episode,
+            ['comic_id' => $comic->id],
+            request()->ip()
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Episode berhasil dipublikasikan oleh admin.',
@@ -341,22 +418,164 @@ class AdminComicController extends Controller
     }
 
     /**
-     * Blokir komik — tidak bisa dibaca oleh user lain.
+     * Tolak episode — episode otomatis DIHAPUS.
+     * Creator menerima notifikasi berisi alasan penolakan, lalu bisa
+     * mengunggah episode baru (nomor lama otomatis bebas dipakai lagi).
+     * Episode yang sudah terbit ikut dihapus & tidak lagi tampil publik.
      */
-    public function block(Comic $comic): JsonResponse
+    public function rejectEpisode(Request $request, Episode $episode): JsonResponse
     {
+        $note = trim((string) $request->input('reason', ''));
+        if (mb_strlen($note) > 500) {
+            $note = mb_substr($note, 0, 500);
+        }
+
+        $wasPublished = $episode->status === Episode::STATUS_PUBLISHED;
+
+        // Beri tahu creator alasan penolakan SEBELUM episode dihapus
+        app(NotificationService::class)->send(
+            $episode->comic->creator_id,
+            NotificationService::TYPE_COMIC_UPDATE,
+            [
+                'comic_id' => $episode->comic_id,
+                'comic_title' => $episode->comic->title,
+                'episode_id' => $episode->id,
+                'episode_number' => $episode->number,
+                'episode_title' => $episode->title,
+                'status' => 'rejected',
+                'message' => 'Episode "' . $episode->title . '" ditolak dan dihapus oleh admin'
+                    . ($note !== '' ? ' — ' . $note : '')
+                    . '. Silakan unggah ulang episode dengan perbaikan.',
+            ]
+        );
+
+        // Hapus episode beserta halaman & data terkait (semua FK cascade/null)
+        $comic = $episode->comic;
+        $episode->delete();
+
+        $this->syncComicPublicationState($episode->comic_id);
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            auth()->user(),
+            ActivityLog::ACTION_EPISODE_REJECT,
+            'Admin menolak episode ' . $episode->number . ' "' . $episode->title . '" dari komik "' . $comic->title . '"'
+                . ($note !== '' ? ' — ' . $note : ''),
+            $comic,
+            ['episode_id' => $episode->id, 'reason' => $note],
+            request()->ip()
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $wasPublished
+                ? 'Episode ditolak & dihapus — tidak lagi tampil publik.'
+                : 'Episode ditolak & dihapus.',
+            'data' => [
+                'id' => $episode->id,
+                'number' => $episode->number,
+                'title' => $episode->title,
+                'status' => 'deleted',
+            ],
+        ]);
+    }
+
+    /**
+     * Hapus episode dari dashboard Laporan Komik (admin).
+     * Episode dihapus permanen beserta halaman & data terkait.
+     */
+    public function destroyEpisode(Episode $episode): JsonResponse
+    {
+        // Beri tahu creator bahwa episodenya dihapus admin (terbit maupun belum)
+        app(NotificationService::class)->send(
+            $episode->comic->creator_id,
+            NotificationService::TYPE_COMIC_UPDATE,
+            [
+                'comic_id' => $episode->comic_id,
+                'comic_title' => $episode->comic->title,
+                'episode_id' => $episode->id,
+                'episode_number' => $episode->number,
+                'episode_title' => $episode->title,
+                'status' => 'deleted',
+                'message' => 'Episode "' . $episode->title . '" dihapus oleh admin.'
+                    . ($episode->status === Episode::STATUS_PUBLISHED ? ' Episode tidak lagi tampil publik.' : ''),
+            ]
+        );
+
+        $comic = $episode->comic;
+        $episodeTitle = $episode->title;
+        $episodeNumber = $episode->number;
+        $comicTitle = $comic->title;
+        $episode->delete();
+
+        $this->syncComicPublicationState($episode->comic_id);
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            auth()->user(),
+            ActivityLog::ACTION_EPISODE_DELETE,
+            'Admin menghapus episode ' . $episodeNumber . ' "' . $episodeTitle . '" dari komik "' . $comicTitle . '"',
+            $comic,
+            ['episode_id' => $episode->id],
+            request()->ip()
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Episode berhasil dihapus.',
+            'data' => null,
+        ]);
+    }
+
+    /**
+     * Sinkronkan status publikasi komik: bila tidak ada lagi episode yang
+     * terbit, komik tidak lagi tampil publik (published_at null & status
+     * kembali ke kondisi review/ongoing).
+     */
+    private function syncComicPublicationState(int $comicId): void
+    {
+        $comic = Comic::find($comicId);
+        if (! $comic) {
+            return;
+        }
+
+        $stillHasPublished = Episode::where('comic_id', $comicId)
+            ->where('status', Episode::STATUS_PUBLISHED)
+            ->exists();
+
+        if ($comic->published_at && ! $stillHasPublished) {
+            $comic->update([
+                'published_at' => null,
+                'status' => Comic::STATUS_ONGOING,
+            ]);
+        }
+    }
+
+    /**
+     * Blokir komik — tidak bisa dibaca oleh user lain.
+     *
+     * Creator TETAP bisa login (akun tidak diblokir), namun izin
+     * upload komik diberhentikan (can_upload = false). Admin dapat
+     * mengaktifkan kembali izin upload lewat Manajemen Pengguna.
+     */
+    public function block(Request $request, Comic $comic): JsonResponse
+    {
+        $note = trim((string) $request->input('reason', ''));
+        if (mb_strlen($note) > 500) {
+            $note = mb_substr($note, 0, 500);
+        }
+
         $comic->update([
-            'status' => Comic::STATUS_HIATUS,
             'published_at' => null,
-            'verification_status' => Comic::VERIFICATION_REJECTED,
-            'rejection_reason' => 'Komik diblokir oleh admin.',
+            'verification_status' => Comic::VERIFICATION_BLOCKED,
+            'rejection_reason' => $note !== '' ? $note : 'Komik diblokir oleh admin.',
         ]);
 
         // Backup: pastikan verification_status terupdate via raw query
         try {
             DB::table('comics')->where('id', $comic->id)->update([
-                'verification_status' => 'rejected',
-                'rejection_reason' => 'Komik diblokir oleh admin.',
+                'verification_status' => 'blocked',
+                'rejection_reason' => $note !== '' ? $note : 'Komik diblokir oleh admin.',
             ]);
         } catch (\Throwable $e) {
             // Kolom belum ada — abaikan
@@ -367,6 +586,15 @@ class AdminComicController extends Controller
             ->where('status', Episode::STATUS_PUBLISHED)
             ->update(['status' => Episode::STATUS_DRAFT]);
 
+        // Nonaktifkan izin upload creator — tetap bisa login, tidak bisa upload komik lagi.
+        if ($comic->creator_id) {
+            try {
+                DB::table('users')->where('id', $comic->creator_id)->update(['can_upload' => false]);
+            } catch (\Throwable $e) {
+                // Kolom belum ada — abaikan
+            }
+        }
+
         // Notifikasi ke creator
         app(NotificationService::class)->send(
             $comic->creator_id,
@@ -375,13 +603,23 @@ class AdminComicController extends Controller
                 'comic_id' => $comic->id,
                 'comic_title' => $comic->title,
                 'status' => 'blocked',
-                'message' => 'Komik "' . $comic->title . '" telah diblokir oleh admin.',
+                'message' => 'Komik "' . $comic->title . '" telah diblokir oleh admin. Akun Anda masih bisa login, namun izin upload komik dinonaktifkan. Hubungi admin bila ingin mengaktifkannya kembali.',
             ]
+        );
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            auth()->user(),
+            ActivityLog::ACTION_COMIC_BLOCK,
+            'Admin memblokir komik "' . $comic->title . '"' . ($note !== '' ? ' — ' . $note : '') . '. Izin upload creator dinonaktifkan.',
+            $comic,
+            ['reason' => $note !== '' ? $note : null],
+            request()->ip()
         );
 
         return response()->json([
             'success' => true,
-            'message' => 'Komik berhasil diblokir.',
+            'message' => 'Komik berhasil diblokir & izin upload creator dinonaktifkan.',
             'data' => new AdminComicResource(
                 $comic->load('creator:id,name')->loadCount('episodes')
             ),
@@ -422,7 +660,33 @@ class AdminComicController extends Controller
      */
     public function destroy(Comic $comic): JsonResponse
     {
+        $title = $comic->title;
+        $creatorId = $comic->creator_id;
+        $comicId = $comic->id;
+
+        // Beri tahu creator bahwa komiknya dihapus admin
+        app(NotificationService::class)->send(
+            $creatorId,
+            NotificationService::TYPE_COMIC_UPDATE,
+            [
+                'comic_id' => $comicId,
+                'comic_title' => $title,
+                'status' => 'deleted',
+                'message' => 'Komik "' . $title . '" dihapus oleh admin dan tidak lagi tampil publik.',
+            ]
+        );
+
         $comic->delete();
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            auth()->user(),
+            ActivityLog::ACTION_COMIC_BAN,
+            'Admin menghapus komik "' . $title . '"',
+            null,
+            ['comic_id' => $comic->id, 'reason' => 'deleted'],
+            request()->ip()
+        );
 
         return response()->json([
             'success' => true,

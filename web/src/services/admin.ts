@@ -1,5 +1,7 @@
 import api from './api'
 import type {
+  ActivityLogAction,
+  ActivityLogListResponse,
   AdminComic,
   AdminComment,
   AdminCreator,
@@ -16,6 +18,7 @@ import type {
   Role,
   TransactionStatus,
   TransactionType,
+  VerificationStatus,
   WithdrawalStatus,
 } from '../types'
 
@@ -34,6 +37,19 @@ export const admin = {
   async dashboard(): Promise<DashboardStats> {
     const { data } = await api.get<{ data: DashboardStats }>('/admin/dashboard')
     return data.data
+  },
+
+  // ============ Riwayat Aktivitas (feature 13) ============
+  async activities(params: {
+    q?: string
+    action?: ActivityLogAction | string
+    date?: string
+    date_from?: string
+    date_to?: string
+    page?: number
+  } = {}): Promise<ActivityLogListResponse> {
+    const { data } = await api.get<ActivityLogListResponse>('/admin/activities', { params })
+    return data
   },
 
   // ============ Users ============
@@ -66,6 +82,11 @@ export const admin = {
     return data.data
   },
 
+  async setUploadPermission(id: number, canUpload: boolean): Promise<AdminUser> {
+    const { data } = await api.post<{ data: AdminUser }>(`/admin/users/${id}/upload-permission`, { can_upload: canUpload })
+    return data.data
+  },
+
   // ============ Creators ============
   async creators(params: { q?: string; verified?: boolean; page?: number } = {}): Promise<ListResponse<AdminCreator>> {
     const { data } = await api.get<ListResponse<AdminCreator>>('/admin/creators', { params })
@@ -78,7 +99,7 @@ export const admin = {
   },
 
   // ============ Comics ============
-  async comics(params: { q?: string; status?: ComicStatus; visibility?: 'all' | 'published' | 'draft'; page?: number } = {}): Promise<ListResponse<AdminComic>> {
+  async comics(params: { q?: string; status?: ComicStatus; verification?: VerificationStatus; visibility?: 'all' | 'published' | 'draft'; page?: number } = {}): Promise<ListResponse<AdminComic>> {
     const { data } = await api.get<ListResponse<AdminComic>>('/admin/comics', { params })
     return data
   },
@@ -107,8 +128,8 @@ export const admin = {
     return data.data
   },
 
-  async blockComic(id: number): Promise<AdminComic> {
-    const { data } = await api.post<{ data: AdminComic }>(`/admin/comics/${id}/block`)
+  async blockComic(id: number, reason?: string): Promise<AdminComic> {
+    const { data } = await api.post<{ data: AdminComic }>(`/admin/comics/${id}/block`, { reason })
     return data.data
   },
 
@@ -117,8 +138,17 @@ export const admin = {
     return data.data
   },
 
-  async comicEpisodes(comicId: number): Promise<{ comic: { id: number; title: string }; episodes: Array<{ id: number; number: number; title: string; status: 'draft' | 'published'; is_premium: boolean; price_coin: number; view_count: number; like_count: number; page_count: number; comments_count: number; published_at: string | null }> }> {
-    const { data } = await api.get<{ data: { comic: { id: number; title: string }; episodes: Array<{ id: number; number: number; title: string; status: 'draft' | 'published'; is_premium: boolean; price_coin: number; view_count: number; like_count: number; page_count: number; comments_count: number; published_at: string | null }> } }>(`/admin/comics/${comicId}/episodes`)
+  async rejectEpisode(episodeId: number, reason?: string): Promise<{ id: number; title: string; number: number; status: string }> {
+    const { data } = await api.post<{ data: { id: number; title: string; number: number; status: string } }>(`/admin/episodes/${episodeId}/reject`, { reason })
+    return data.data
+  },
+
+  async deleteEpisode(episodeId: number): Promise<void> {
+    await api.delete(`/admin/episodes/${episodeId}`)
+  },
+
+  async comicEpisodes(comicId: number): Promise<{ comic: { id: number; title: string; verification_status: 'draft' | 'pending' | 'approved' | 'rejected' | string; published_at: string | null }; episodes: Array<{ id: number; number: number; title: string; status: 'draft' | 'pending' | 'published'; is_premium: boolean; price_coin: number; view_count: number; like_count: number; page_count: number; comments_count: number; published_at: string | null }> }> {
+    const { data } = await api.get<{ data: { comic: { id: number; title: string; verification_status: 'draft' | 'pending' | 'approved' | 'rejected' | string; published_at: string | null }; episodes: Array<{ id: number; number: number; title: string; status: 'draft' | 'pending' | 'published'; is_premium: boolean; price_coin: number; view_count: number; like_count: number; page_count: number; comments_count: number; published_at: string | null }> } }>(`/admin/comics/${comicId}/episodes`)
     return data.data
   },
 

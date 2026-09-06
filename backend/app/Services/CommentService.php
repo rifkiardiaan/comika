@@ -36,6 +36,13 @@ class CommentService
                 ]);
             }
 
+            // Tidak boleh membalas balasan (maksimal 1 level nesting)
+            if ($parent->parent_id !== null) {
+                throw ValidationException::withMessages([
+                    'parent_id' => ['Tidak bisa membalas balasan.'],
+                ]);
+            }
+
             // Selalu unggah ke top-level (flatten) agar mudah di-load
             $rootParentId = $parent->parent_id ?? $parent->id;
 

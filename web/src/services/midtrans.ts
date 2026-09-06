@@ -115,4 +115,17 @@ export const midtrans = {
     )
     return data.data
   },
+
+  /** Verify & process pending payment — called after Snap SDK onSuccess. */
+  async verifyPayment(orderId: string): Promise<{
+    status: string
+    coins_credited: boolean
+    coins?: number
+  }> {
+    const { data } = await api.post<{ data: { status: string; coins_credited: boolean; coins?: number } }>(
+      '/midtrans/verify-payment',
+      { order_id: orderId },
+    )
+    return data.data
+  },
 }

@@ -41,6 +41,7 @@ class ReaderSystemTest extends TestCase
             'status' => Comic::STATUS_ONGOING,
             'age_rating' => Comic::AGE_TEEN,
             'published_at' => now(),
+            'verification_status' => 'approved',
         ]);
         $comic->genres()->attach($genre->id);
 
@@ -54,6 +55,7 @@ class ReaderSystemTest extends TestCase
             'number' => $number,
             'status' => Episode::STATUS_PUBLISHED,
             'published_at' => now(),
+            'verification_status' => 'approved',
         ]);
 
         for ($i = 1; $i <= $pages; $i++) {

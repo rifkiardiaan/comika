@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\StreamedResponse;
@@ -10,7 +12,7 @@ use Illuminate\Support\Facades\File;
 
 class DownloadController extends Controller
 {
-    private const APK_DIR = 'app/downloads';
+    private const APK_DIR = 'downloads';
     private const APK_FILENAME = 'comika.apk';
     private const APP_VERSION = '1.0.0';
     private const MIN_ANDROID = '7.0';
@@ -20,7 +22,7 @@ class DownloadController extends Controller
      */
     public function version(): JsonResponse
     {
-        $apkPath = storage_path(self::APK_DIR . '/' . self::APK_FILENAME);
+        $apkPath = public_path(self::APK_DIR . '/' . self::APK_FILENAME);
         $exists = File::exists($apkPath);
         $size = $exists ? File::size($apkPath) : 0;
 
@@ -40,9 +42,9 @@ class DownloadController extends Controller
     /**
      * Download APK file — streaming response.
      */
-    public function download(): StreamedResponse|JsonResponse
+    public function download(): \Symfony\Component\HttpFoundation\StreamedResponse|JsonResponse
     {
-        $apkPath = storage_path(self::APK_DIR . '/' . self::APK_FILENAME);
+        $apkPath = public_path(self::APK_DIR . '/' . self::APK_FILENAME);
 
         if (!File::exists($apkPath)) {
             return response()->json([
@@ -78,6 +80,31 @@ class DownloadController extends Controller
     }
 
     /**
+     * Catat aktivitas "Download Offline" komik (feature 13) — dipanggil
+     * web/app secara fire-and-forget setelah komik berhasil disimpan offline.
+     * Endpoint tidak mengubah data apa pun; hanya mencatat riwayat.
+     */
+    public function logComicDownload(Request $request, \App\Models\Comic $comic): JsonResponse
+    {
+        $episodeCount = (int) $request->input('episode_count', 0);
+        $pageCount = (int) $request->input('page_count', 0);
+
+        app(ActivityLogService::class)->log(
+            $request->user(),
+            ActivityLog::ACTION_COMIC_DOWNLOAD,
+            $request->user()->name . ' mengunduh komik "' . $comic->title . '" untuk dibaca offline (' . $episodeCount . ' episode, ' . $pageCount . ' halaman)',
+            $comic,
+            ['episode_count' => $episodeCount, 'page_count' => $pageCount],
+            $request->ip()
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Download tercatat.',
+        ]);
+    }
+
+    /**
      * Placeholder untuk upload APK (admin only).
      */
     public function upload(Request $request): JsonResponse
@@ -86,7 +113,7 @@ class DownloadController extends Controller
             'apk' => 'required|file|mimes:apk|max:104857600', // max 100MB
         ]);
 
-        $dir = storage_path(self::APK_DIR);
+        $dir = public_path(self::APK_DIR);
         if (!File::isDirectory($dir)) {
             File::makeDirectory($dir, 0755, true);
         }

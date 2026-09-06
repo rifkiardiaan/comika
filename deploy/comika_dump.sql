@@ -399,7 +399,7 @@ CREATE TABLE `episodes` (
   `comic_id` bigint unsigned NOT NULL,
   `title` varchar(140) COLLATE utf8mb4_unicode_ci NOT NULL,
   `number` int unsigned NOT NULL,
-  `status` enum('draft','published') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
+  `status` enum('draft','pending','published') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
   `is_premium` tinyint(1) NOT NULL DEFAULT '0',
   `price_coin` int unsigned NOT NULL DEFAULT '0',
   `view_count` bigint unsigned NOT NULL DEFAULT '0',

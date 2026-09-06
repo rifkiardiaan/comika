@@ -4,7 +4,7 @@ import { ArrowRight, Flame, Loader2, Sparkles, TrendingUp } from 'lucide-react'
 import ComicCard from '../components/ComicCard'
 import { content } from '../services/content'
 import { auth } from '../services/auth'
-import { coverEmoji, coverKeyOf, coverStyle } from '../data/mock'
+import { coverEmoji, coverKeyOf, coverStyle, mockComics } from '../data/mock'
 import type { Comic } from '../types'
 
 export default function HomePage() {
@@ -36,11 +36,20 @@ export default function HomePage() {
           content.comics({ sort: 'newest', page: 1, per_page: 12 }),
         ])
         if (cancelled) return
-        setTrending(popular.data ?? [])
-        setRecommended(rating.data ?? [])
-        setAllComics(all.data ?? [])
-        setAllLastPage(all.meta?.last_page ?? 1)
-      } catch {
+        // Fallback ke mock data jika API kosong (database belum di-seed)
+        const apiTrending = popular.data ?? []
+        const apiRecommended = rating.data ?? []
+        const apiAll = all.data ?? []
+        const useMock = apiTrending.length === 0 && apiRecommended.length === 0 && apiAll.length === 0
+        if (useMock && mockComics.length > 0) {
+          console.info('[HomePage] API returned 0 comics — using mock data as fallback')
+        }
+        setTrending(useMock ? mockComics.slice(0, 10) : apiTrending)
+        setRecommended(useMock ? mockComics.slice(0, 8) : apiRecommended)
+        setAllComics(useMock ? mockComics.slice(0, 12) : apiAll)
+        setAllLastPage(useMock ? 1 : (all.meta?.last_page ?? 1))
+      } catch (err) {
+        console.error('[HomePage] Failed to load comics:', err)
         // abaikan — halaman tetap tampil dengan data kosong
       } finally {
         if (!cancelled) setLoading(false)

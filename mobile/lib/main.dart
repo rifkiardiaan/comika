@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'screens/webview_screen.dart';
-import 'services/api_service.dart';
+import 'services/connectivity_service.dart';
+import 'services/download_notification_service.dart';
 import 'services/update_service.dart';
 import 'screens/update_dialog.dart';
 
@@ -22,6 +23,12 @@ void main() {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Init notification service for download progress
+  DownloadNotificationService.instance.init();
+
+  // Init connectivity monitoring
+  ConnectivityService.instance.startMonitoring();
 
   runApp(const ComikaApp());
 }

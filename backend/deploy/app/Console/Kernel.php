@@ -12,7 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Kirim pengingat expiry langganan setiap hari jam 9 pagi
+        $schedule->command('subscription:expiry-reminder')->dailyAt('09:00');
     }
 
     /**

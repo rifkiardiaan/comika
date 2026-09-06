@@ -20,6 +20,17 @@ class UnlockController extends Controller
     {
         $result = $this->monetizationService->unlockEpisode($request->user(), $episode);
 
+        // Riwayat aktivitas: episode premium di-unlock dengan koin
+        if (($result['created'] ?? false) && ! ($result['owner'] ?? false) && ! ($result['vvip'] ?? false)) {
+            app(\App\Services\ActivityLogService::class)->log(
+                $request->user(),
+                \App\Models\ActivityLog::ACTION_EPISODE_UNLOCK,
+                $request->user()->name . ' membuka episode ' . $episode->number . ' "' . $episode->title . '" dari komik "' . $episode->comic->title . '" dengan ' . $episode->price_coin . ' koin',
+                $episode,
+                ['coins_spent' => $episode->price_coin]
+            );
+        }
+
         $message = match (true) {
             $result['owner'] => 'Episode milik Anda — tidak perlu di-unlock.',
             $result['vvip'] ?? false => 'Episode terbuka untuk anggota VVIP.',

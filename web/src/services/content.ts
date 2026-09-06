@@ -14,10 +14,14 @@ export const content = {
       '/comics',
       { params },
     )
-    return {
+    const result = {
       data: data.data ?? [],
       meta: data.meta ?? { current_page: 1, last_page: 1, total: 0 },
     }
+    if (result.data.length === 0) {
+      console.warn('[content.comics] API returned 0 comics. Response:', JSON.stringify(data).slice(0, 500))
+    }
+    return result
   },
 
   /** Detail komik + episode + user_actions (saat login). */

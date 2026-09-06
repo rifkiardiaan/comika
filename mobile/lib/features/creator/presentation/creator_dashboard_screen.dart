@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../services/auth_service.dart';
@@ -146,7 +147,7 @@ class _CreatorDashboardScreenState extends State<CreatorDashboardScreen> {
     );
   }
 
-  /// Notice: Creator tidak bisa publish sendiri.
+  /// Notice: Publish komik/episode harus menunggu persetujuan admin.
   Widget _buildPublishNotice() {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -161,7 +162,7 @@ class _CreatorDashboardScreenState extends State<CreatorDashboardScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Anda hanya bisa mengunggah komik/episode. Pempublikasian hanya bisa dilakukan oleh admin setelah disetujui.',
+              'Upload komik & episode di web lalu tekan Publish. Komik/episode baru tampil publik setelah disetujui admin di dashboard Laporan Komik.',
               style: TextStyle(color: Colors.amber.shade200, fontSize: 12),
             ),
           ),
@@ -400,6 +401,7 @@ class _CreatorDashboardScreenState extends State<CreatorDashboardScreen> {
 
   Widget _episodeTile(RecentEpisode ep) {
     final isPublished = ep.status == 'published';
+    final isPending = ep.status == 'pending';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -431,15 +433,23 @@ class _CreatorDashboardScreenState extends State<CreatorDashboardScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: isPublished ? Colors.greenAccent.withValues(alpha: 0.15) : Colors.orangeAccent.withValues(alpha: 0.15),
+              color: isPublished
+                  ? Colors.greenAccent.withValues(alpha: 0.15)
+                  : isPending
+                      ? Colors.amber.withValues(alpha: 0.15)
+                      : Colors.orangeAccent.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              isPublished ? 'Terbit' : 'Draft',
+              isPublished ? 'Terbit' : isPending ? 'Menunggu' : 'Draft',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: isPublished ? Colors.greenAccent : Colors.orangeAccent,
+                color: isPublished
+                    ? Colors.greenAccent
+                    : isPending
+                        ? Colors.amber
+                        : Colors.orangeAccent,
               ),
             ),
           ),
@@ -479,7 +489,7 @@ class _CreatorDashboardScreenState extends State<CreatorDashboardScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _commentAvatar(comment.userName),
+          _commentAvatar(comment.userName, comment.userAvatarUrl),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -503,7 +513,24 @@ class _CreatorDashboardScreenState extends State<CreatorDashboardScreen> {
     );
   }
 
-  Widget _commentAvatar(String name) {
+  Widget _commentAvatar(String name, String? avatarUrl) {
+    final url = ApiConstants.assetUrl(avatarUrl);
+    if (url.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          url,
+          width: 32,
+          height: 32,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _commentAvatarFallback(name),
+        ),
+      );
+    }
+    return _commentAvatarFallback(name);
+  }
+
+  Widget _commentAvatarFallback(String name) {
     return Container(
       width: 32,
       height: 32,

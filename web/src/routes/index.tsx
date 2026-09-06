@@ -29,6 +29,7 @@ import KomunitasPage from '../pages/KomunitasPage'
 import BecomeCreatorPage from '../pages/BecomeCreatorPage'
 import PremiumPage from '../pages/PremiumPage'
 import DownloadPage from '../pages/DownloadPage'
+import KomikOfflinePage from '../pages/KomikOfflinePage'
 import PublicUserProfilePage from '../pages/PublicUserProfilePage'
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
@@ -41,6 +42,7 @@ import AdminReportsPage from '../pages/admin/AdminReportsPage'
 import AdminGenresPage from '../pages/admin/AdminGenresPage'
 import AdminTransactionsPage from '../pages/admin/AdminTransactionsPage'
 import AdminCreatorApplicationsPage from '../pages/admin/AdminCreatorApplicationsPage'
+import AdminActivityLogPage from '../pages/admin/AdminActivityLogPage'
 import AdminVvipPage from '../pages/admin/AdminVvipPage'
 
 export const router = createBrowserRouter([
@@ -74,6 +76,7 @@ export const router = createBrowserRouter([
       { path: 'become-creator', element: <BecomeCreatorPage /> },
       { path: 'premium', element: <PremiumPage /> },
       { path: 'download', element: <DownloadPage /> },
+      { path: 'komik-offline', element: <KomikOfflinePage /> },
       { path: 'user/:id', element: <PublicUserProfilePage /> },
       { path: '*', element: <ComingSoonPage title="Halaman Tidak Ditemukan" /> },
     ],
@@ -96,6 +99,7 @@ export const router = createBrowserRouter([
       { path: 'reports', element: <AdminReportsPage /> },
       { path: 'genres', element: <AdminGenresPage /> },
       { path: 'transactions', element: <AdminTransactionsPage /> },
+      { path: 'activities', element: <AdminActivityLogPage /> },
       { path: 'vvip', element: <AdminVvipPage /> },
       { path: 'creator-applications', element: <AdminCreatorApplicationsPage /> },
     ],

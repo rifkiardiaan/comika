@@ -3,6 +3,7 @@ import { AlertCircle, Loader2, SlidersHorizontal } from 'lucide-react'
 import ComicCard from '../components/ComicCard'
 import Pagination from '../components/admin/Pagination'
 import { content } from '../services/content'
+import { mockComics } from '../data/mock'
 import { getApiErrorMessage } from '../utils/errors'
 import type { Comic, Genre } from '../types'
 
@@ -31,8 +32,14 @@ export default function DiscoverPage() {
         sort,
         page,
       })
-      setComics(res.data)
-      setMeta(res.meta)
+      // Fallback ke mock data jika API kosong
+      if (res.data.length === 0 && !activeGenre) {
+        setComics(mockComics)
+        setMeta({ current_page: 1, last_page: 1, total: mockComics.length })
+      } else {
+        setComics(res.data)
+        setMeta(res.meta)
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, 'Gagal memuat daftar komik.'))
     } finally {

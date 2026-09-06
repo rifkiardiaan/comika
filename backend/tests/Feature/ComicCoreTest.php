@@ -48,6 +48,7 @@ class ComicCoreTest extends TestCase
             'status' => Comic::STATUS_ONGOING,
             'age_rating' => Comic::AGE_TEEN,
             'published_at' => now(),
+            'verification_status' => 'approved',
             ...$overrides,
         ]);
         $comic->genres()->attach($genre->id);
@@ -193,16 +194,17 @@ class ComicCoreTest extends TestCase
             ->assertJsonPath('data.0.page_number', 1)
             ->assertJsonPath('data.1.page_number', 2);
 
-        // Publish
+        // Ajukan ke admin (alur moderasi: creator TIDAK bisa publish sendiri —
+        // episode masuk antrian review admin dan baru terbit setelah disetujui).
         $publish = $this->withToken($this->creatorToken())
             ->postJson("/api/v1/episodes/{$episodeId}/publish");
 
         $publish->assertStatus(200)
-            ->assertJsonPath('data.status', 'published');
+            ->assertJsonPath('data.status', 'pending');
 
         $this->assertDatabaseHas('episodes', [
             'id' => $episodeId,
-            'status' => 'published',
+            'status' => 'pending',
         ]);
     }
 
@@ -241,6 +243,7 @@ class ComicCoreTest extends TestCase
             'number' => 1,
             'status' => Episode::STATUS_PUBLISHED,
             'published_at' => now(),
+            'verification_status' => 'approved',
         ]);
 
         $response = $this->getJson("/api/v1/comics/{$comic->id}");

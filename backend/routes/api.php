@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminActivityController;
 use App\Http\Controllers\Api\AdminComicController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\AdminCommentController;
@@ -59,6 +60,28 @@ Route::get('/health', function () {
         'data' => [
             'version' => 'v1',
             'time' => now()->toIso8601String(),
+        ],
+    ]);
+});
+
+// Diagnostic — comic count (for debugging)
+Route::get('/debug/comics', function () {
+    $comicCount = \App\Models\Comic::count();
+    $publishedCount = \App\Models\Comic::whereNotNull('published_at')->count();
+    $episodeCount = \App\Models\Episode::count();
+    $userCount = \App\Models\User::count();
+    $creatorCount = \App\Models\User::where('role', 'creator')->count();
+    $genreCount = \App\Models\Genre::count();
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'users' => $userCount,
+            'creators' => $creatorCount,
+            'genres' => $genreCount,
+            'comics_total' => $comicCount,
+            'comics_published' => $publishedCount,
+            'episodes' => $episodeCount,
         ],
     ]);
 });
@@ -222,6 +245,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Bookmark, follow, like, rating
     Route::post('comics/{comic}/bookmark', [BookmarkController::class, 'toggle']);
     Route::post('comics/{comic}/follow', [FollowController::class, 'toggle']);
+
+    // Riwayat aktivitas: catat download offline (fire-and-forget dari web/app)
+    Route::post('comics/{comic}/download-log', [DownloadController::class, 'logComicDownload']);
     Route::post('comics/{comic}/like', [LikeController::class, 'toggleComic']);
     Route::post('episodes/{episode}/like', [LikeController::class, 'toggleEpisode']);
     Route::post('comments/{comment}/like', [LikeController::class, 'toggleComment']);
@@ -247,6 +273,7 @@ Route::middleware(['auth:sanctum', 'creator', 'not_banned'])->prefix('creator')-
     Route::get('comics', [CreatorComicController::class, 'index']);
     Route::get('comics/{comic}', [CreatorComicController::class, 'show']);
     Route::get('comics/{comic}/analytics', [CreatorComicController::class, 'analytics']);
+    Route::post('comics/{comic}/submit', [CreatorComicController::class, 'submit']);
 });
 
 // ============================================================
@@ -265,6 +292,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Premium subscription
     Route::get('subscription/plans', [SubscriptionController::class, 'plans']);
     Route::get('subscription/status', [SubscriptionController::class, 'status']);
+    Route::get('subscription/history', [SubscriptionController::class, 'history']);
     Route::post('subscription/subscribe', [SubscriptionController::class, 'subscribe']);
     Route::post('subscription/cancel', [SubscriptionController::class, 'cancel']);
     Route::post('episodes/{episode}/unlock', [UnlockController::class, 'store']);
@@ -279,6 +307,10 @@ Route::post('midtrans/notification', [MidtransController::class, 'notification']
 // Snap token creation — butuh login
 Route::middleware('auth:sanctum')->prefix('midtrans')->group(function () {
     Route::get('status/{orderId}', [MidtransController::class, 'status']);
+    Route::post('verify-payment', [MidtransController::class, 'verifyPayment']);
+    // Dedicated snap token endpoint for mobile app
+    Route::post('snap-token/coin-package/{package}', [MidtransController::class, 'createCoinPackageSnapToken']);
+    Route::post('snap-token/subscription', [MidtransController::class, 'createSubscriptionSnapToken']);
 });
 
 // Earning & withdrawal creator — butuh login + role creator + tidak diblokir
@@ -295,6 +327,9 @@ Route::middleware(['auth:sanctum', 'creator', 'not_banned'])->prefix('creator')-
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::get('dashboard', [AdminDashboardController::class, 'index']);
 
+    // Riwayat aktivitas (feature 13)
+    Route::get('activities', [AdminActivityController::class, 'index']);
+
     // Manajemen user
     Route::get('users', [AdminUserController::class, 'index']);
     Route::patch('users/{user}/role', [AdminUserController::class, 'updateRole']);
@@ -302,6 +337,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('users/{user}/ban', [AdminUserController::class, 'ban']);
     Route::post('users/{user}/unban', [AdminUserController::class, 'unban']);
     Route::post('users/{user}/permanent-ban', [AdminUserController::class, 'permanentBan']);
+    Route::post('users/{user}/upload-permission', [AdminUserController::class, 'setUploadPermission']);
 
     // Subscription management (Premium & VVIP)
     Route::get('subscribers', [AdminUserController::class, 'subscribers']);
@@ -328,6 +364,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::delete('comics/{comic}', [AdminComicController::class, 'destroy']);
     Route::get('revenue', [AdminComicController::class, 'revenue']);
     Route::post('episodes/{episode}/publish', [AdminComicController::class, 'publishEpisode']);
+    Route::post('episodes/{episode}/reject', [AdminComicController::class, 'rejectEpisode']);
+    Route::delete('episodes/{episode}', [AdminComicController::class, 'destroyEpisode']);
 
     // Moderasi komentar
     Route::get('comments', [AdminCommentController::class, 'index']);

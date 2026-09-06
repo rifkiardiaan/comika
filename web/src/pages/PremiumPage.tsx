@@ -11,7 +11,7 @@ const MIDTRANS_CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || ''
 const MIDTRANS_IS_PRODUCTION = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true'
 
 export default function PremiumPage() {
-  const [user, setUser] = useState<User | null>(auth.getStoredUser())
+  const [user, setUser] = useState<User | null>(() => auth.getStoredUser())
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [status, setStatus] = useState<SubscriptionStatus | null>(null)
   const [loading, setLoading] = useState(true)

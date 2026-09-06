@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   BookOpen,
+  Bookmark,
   ChevronDown,
   Coins,
   Crown,
-  Download,
+  Eye,
+  Flag,
   Gem,
   HelpCircle,
+  LayoutDashboard,
   Library,
   LogOut,
   Menu,
@@ -16,8 +19,10 @@ import {
   Search,
   Banknote,
   Shield,
+  Smartphone,
   Trophy,
   User,
+  Users,
   Wallet,
   X,
 } from 'lucide-react'
@@ -35,7 +40,7 @@ const links = [
 
 export default function Navbar() {
   const [query, setQuery] = useState('')
-  const [user, setUser] = useState<UserType | null>(auth.getStoredUser())
+  const [user, setUser] = useState<UserType | null>(() => auth.getStoredUser())
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -127,7 +132,7 @@ export default function Navbar() {
             to="/download"
             className="hidden items-center gap-1.5 rounded-lg border border-surface-800 bg-surface-900 px-2.5 py-1.5 text-xs font-medium text-surface-300 transition-colors hover:border-brand-500/50 hover:text-brand-300 sm:flex"
           >
-            <Download size={13} />
+            <Smartphone size={13} />
             <span className="hidden lg:inline">Download App</span>
           </Link>
           {/* Mobile hamburger — paling kiri di mobile */}
@@ -169,21 +174,26 @@ export default function Navbar() {
 
               {menuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-surface-800 bg-surface-900 shadow-2xl shadow-black/50">
-                  <div className="border-b border-surface-800 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-surface-100">{user.name}</p>
-                      {user.is_vvip && (
-                        <span className="badge-vvip inline-flex items-center gap-0.5 rounded-full border border-purple-500/50 bg-gradient-to-r from-purple-600/20 via-pink-500/20 to-purple-600/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-200 shadow-sm shadow-purple-500/20">
-                          <Gem size={9} className="animate-pulse" /> VVIP
-                        </span>
-                      )}
-                      {!user.is_vvip && user.is_premium && (
-                        <span className="badge-premium inline-flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-orange-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
-                          <Crown size={9} /> Premium
-                        </span>
-                      )}
+                  <div className="flex items-center gap-3 border-b border-surface-800 px-4 py-3">
+                    <div className={user.is_vvip ? 'avatar-vvip-glow' : ''}>
+                      <Avatar name={user.name} avatarUrl={user.avatar_url} size={40} className="rounded-full" />
                     </div>
-                    <p className="truncate text-xs text-surface-400">@{user.username}</p>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="truncate text-sm font-semibold text-surface-100">{user.name}</p>
+                        {user.is_vvip && (
+                          <span className="badge-vvip inline-flex items-center gap-0.5 rounded-full border border-purple-500/50 bg-gradient-to-r from-purple-600/20 via-pink-500/20 to-purple-600/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-200 shadow-sm shadow-purple-500/20">
+                            <Gem size={9} className="animate-pulse" /> VVIP
+                          </span>
+                        )}
+                        {!user.is_vvip && user.is_premium && (
+                          <span className="badge-premium inline-flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-orange-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                            <Crown size={9} /> Premium
+                          </span>
+                        )}
+                      </div>
+                      <p className="truncate text-xs text-surface-400">@{user.username}</p>
+                    </div>
                   </div>
                   <Link
                     to="/profile"
@@ -191,6 +201,13 @@ export default function Navbar() {
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-surface-300 transition-colors hover:bg-surface-800 hover:text-surface-50"
                   >
                     <User size={15} /> Profil
+                  </Link>
+                  <Link
+                    to="/komik-offline"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-brand-300 transition-colors hover:bg-surface-800 hover:text-brand-200"
+                  >
+                    <Bookmark size={15} /> Komik Offline
                   </Link>
                   <Link
                     to="/wallet"
@@ -255,36 +272,36 @@ export default function Navbar() {
                   )}
                   {user.role === 'admin' && (
                     <>
-                      <div className="border-t border-surface-800 px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-surface-500">
-                        Admin
+                      <div className="border-t border-surface-800 px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-brand-400">
+                        <Shield size={10} className="mr-1 inline" /> Area Administrator
                       </div>
                       <Link
                         to="/admin"
                         onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-surface-300 transition-colors hover:bg-surface-800 hover:text-surface-50"
+                        className="flex items-center gap-2 rounded-lg mx-1.5 px-3 py-2 text-sm font-medium text-surface-300 transition-colors hover:bg-brand-500/15 hover:text-brand-300"
                       >
-                        <Shield size={15} /> Dashboard
+                        <LayoutDashboard size={15} /> Dashboard
                       </Link>
                       <Link
                         to="/admin/users"
                         onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-surface-300 transition-colors hover:bg-surface-800 hover:text-surface-50"
+                        className="flex items-center gap-2 rounded-lg mx-1.5 px-3 py-2 text-sm font-medium text-surface-300 transition-colors hover:bg-brand-500/15 hover:text-brand-300"
                       >
-                        <User size={15} /> Pengguna
+                        <Users size={15} /> Pengguna
                       </Link>
                       <Link
                         to="/admin/comics"
                         onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-surface-300 transition-colors hover:bg-surface-800 hover:text-surface-50"
+                        className="flex items-center gap-2 rounded-lg mx-1.5 px-3 py-2 text-sm font-medium text-surface-300 transition-colors hover:bg-brand-500/15 hover:text-brand-300"
                       >
-                        <BookOpen size={15} /> Komik
+                        <Flag size={15} /> Laporan Komik
                       </Link>
                       <Link
-                        to="/admin/reports"
+                        to="/admin/reading"
                         onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-surface-300 transition-colors hover:bg-surface-800 hover:text-surface-50"
+                        className="flex items-center gap-2 rounded-lg mx-1.5 px-3 py-2 text-sm font-medium text-surface-300 transition-colors hover:bg-brand-500/15 hover:text-brand-300"
                       >
-                        <Shield size={15} /> Laporan
+                        <Eye size={15} /> Laporan Pembaca
                       </Link>
                     </>
                   )}
@@ -345,17 +362,25 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
               className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-300 transition-colors hover:bg-brand-500/10 hover:text-brand-200"
             >
-              <Download size={16} />
+              <Smartphone size={16} />
               Download App
             </NavLink>
             {user && (
               <>
+
                 <NavLink
                   to="/profile"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-surface-300 transition-colors hover:bg-surface-800/60 hover:text-surface-50"
                 >
                   <User size={16} /> Profil
+                </NavLink>
+                <NavLink
+                  to="/komik-offline"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-brand-300 transition-colors hover:bg-surface-800/60 hover:text-brand-200"
+                >
+                  <Bookmark size={16} /> Komik Offline
                 </NavLink>
                 <NavLink
                   to="/wallet"

@@ -12,6 +12,10 @@ class User {
   final bool isBanned;
   final bool isPermanentlyBanned;
   final String? banReason;
+  final bool isPremium;
+  final bool isVvip;
+  final String? premiumUntil;
+  final String? vvipUntil;
 
   const User({
     required this.id,
@@ -26,6 +30,10 @@ class User {
     this.isBanned = false,
     this.isPermanentlyBanned = false,
     this.banReason,
+    this.isPremium = false,
+    this.isVvip = false,
+    this.premiumUntil,
+    this.vvipUntil,
   });
 
   bool get isCreator => role == 'creator';
@@ -46,6 +54,10 @@ class User {
       isBanned: json['is_banned'] as bool? ?? false,
       isPermanentlyBanned: json['is_permanently_banned'] as bool? ?? false,
       banReason: json['ban_reason'] as String?,
+      isPremium: json['is_premium'] as bool? ?? false,
+      isVvip: json['is_vvip'] as bool? ?? false,
+      premiumUntil: json['premium_until'] as String?,
+      vvipUntil: json['vvip_until'] as String?,
     );
   }
 }

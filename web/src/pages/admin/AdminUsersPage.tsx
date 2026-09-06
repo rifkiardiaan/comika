@@ -121,12 +121,27 @@ export default function AdminUsersPage() {
     setNotice('')
     try {
       await admin.permanentBanUser(permanentBanTarget.id, permanentBanReason)
-      setNotice(`User ${permanentBanTarget.name} berhasil diblokir permanen.`)
+      setNotice(`User ${permanentBanTarget.name} berhasil diblokir permanen — tidak bisa login.`)
       setPermanentBanTarget(null)
       setPermanentBanReason('')
       await fetchUsers()
     } catch (err) {
       setError(getApiErrorMessage(err, 'Gagal memblokir permanen user.'))
+    } finally {
+      setBanBusyId(null)
+    }
+  }
+
+  const toggleUpload = async (user: AdminUser) => {
+    setBanBusyId(user.id)
+    setNotice('')
+    try {
+      const next = !user.can_upload
+      await admin.setUploadPermission(user.id, next)
+      setNotice(`Izin upload komik ${user.name} ${next ? 'diaktifkan kembali' : 'dinonaktifkan'}. Creator tetap bisa login.`)
+      await fetchUsers()
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Gagal mengubah izin upload.'))
     } finally {
       setBanBusyId(null)
     }
@@ -272,10 +287,30 @@ export default function AdminUsersPage() {
                               Diblokir
                             </span>
                           )}
+                          {!u.is_permanently_banned && u.role === 'creator' && !u.can_upload && (
+                            <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-300">
+                              Upload Nonaktif
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {!u.is_permanently_banned && u.role === 'creator' && (
+                            <button
+                              onClick={() => toggleUpload(u)}
+                              disabled={banBusyId === u.id}
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                                u.can_upload
+                                  ? 'text-sky-400 hover:bg-sky-500/10'
+                                  : 'text-emerald-400 hover:bg-emerald-500/10'
+                              }`}
+                              title={u.can_upload ? 'Nonaktifkan izin upload komik — creator tetap bisa login' : 'Aktifkan kembali izin upload komik'}
+                            >
+                              {banBusyId === u.id ? <Loader2 size={14} className="animate-spin" /> : u.can_upload ? <Ban size={14} /> : <Unlock size={14} />}
+                              {u.can_upload ? 'Nonaktif Upload' : 'Aktifkan Upload'}
+                            </button>
+                          )}
                           {u.is_banned ? (
                             <button
                               onClick={() => unbanUser(u)}
@@ -358,6 +393,20 @@ export default function AdminUsersPage() {
                       <Trash2 size={16} />
                     </button>
                   </div>
+                  {!u.is_permanently_banned && u.role === 'creator' && (
+                    <button
+                      onClick={() => toggleUpload(u)}
+                      disabled={banBusyId === u.id}
+                      className={`mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                        u.can_upload
+                          ? 'bg-sky-500/10 text-sky-300 hover:bg-sky-500/20'
+                          : 'bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                      }`}
+                    >
+                      {banBusyId === u.id ? <Loader2 size={14} className="animate-spin" /> : u.can_upload ? <Ban size={14} /> : <Unlock size={14} />}
+                      {u.can_upload ? 'Nonaktifkan Upload Komik' : 'Aktifkan Upload Komik'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -395,7 +444,7 @@ export default function AdminUsersPage() {
         title="Blokir Permanen Pengguna"
         description={
           permanentBanTarget
-            ? `User "${permanentBanTarget.name}" (@${permanentBanTarget.username}) akan diblokir PERMANEN. User tidak akan bisa login lagi dan semua komiknya akan dihapus. Tindakan ini tidak dapat dibatalkan.`
+            ? `User "${permanentBanTarget.name}" (@${permanentBanTarget.username}) akan diblokir PERMANEN. User tidak akan bisa login lagi dan semua komiknya dihapus. Login dapat dibuka kembali kapan saja oleh admin lewat tombol "Buka Blokir".`
             : ''
         }
         confirmLabel="Blokir Permanen"

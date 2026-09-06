@@ -6,7 +6,7 @@ import {
   Bell,
   BellOff,
   BellRing,
-  BookOpen,
+  Bookmark,
   Calendar,
   CheckCircle2,
   Coins,
@@ -465,15 +465,20 @@ export default function ProfilePage() {
       )}
 
       {/* ====== Aksi akun ====== */}
-      <section className="mt-6 grid gap-4 sm:grid-cols-3">
+      <section className="mt-6 grid gap-4 sm:grid-cols-2">
         <AccountLink to="/wallet" icon={<Coins size={18} className="text-amber-300" />} title="Dompet Koin" desc="Top-up & riwayat transaksi" />
-        <AccountLink to="/history" icon={<BookOpen size={18} className="text-brand-300" />} title="Riwayat Baca" desc="Lanjutkan baca komik" />
-        {user.role === 'creator' ? (
-          <AccountLink to="/creator" icon={<Palette size={18} className="text-pink-300" />} title="Dashboard Creator" desc="Kelola komik & episode" />
-        ) : (
-          <AccountLink to="/become-creator" icon={<Palette size={18} className="text-pink-300" />} title="Jadi Creator" desc="Ajukan diri jadi creator" />
-        )}
+        <AccountLink to="/komik-offline" icon={<Bookmark size={18} className="text-brand-300" />} title="Komik Offline" desc="Lihat komik yang sudah didownload" />
       </section>
+      {user.role === 'creator' && (
+        <section className="mt-4">
+          <AccountLink to="/creator" icon={<Palette size={18} className="text-pink-300" />} title="Dashboard Creator" desc="Kelola komik & episode" />
+        </section>
+      )}
+      {user.role === 'reader' && (
+        <section className="mt-4">
+          <AccountLink to="/become-creator" icon={<Palette size={18} className="text-pink-300" />} title="Jadi Creator" desc="Ajukan diri jadi creator" />
+        </section>
+      )}
 
       {/* ====== Profil creator ====== */}
       {user.role === 'creator' && (

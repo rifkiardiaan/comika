@@ -13,6 +13,11 @@ class EpisodeDetailResource extends EpisodeResource
     public function toArray(Request $request): array
     {
         $data = parent::toArray($request);
+
+        // Halaman episode premium yang belum di-unlock disetel ke koleksi kosong
+        // oleh controller (setRelation 'pages'). Resource tetap menyertakan kunci
+        // 'pages' biar frontend tidak menganggap data belum datang dan stuck di
+        // "Memuat episode…". Episode yang sudah terbuka ikut diserialkan di sini.
         $data['pages'] = EpisodePageResource::collection($this->whenLoaded('pages'));
 
         // Navigasi prev/next (diset oleh controller)

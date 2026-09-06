@@ -64,11 +64,10 @@ class WalletRepository {
     return list.map((p) => CoinPackage.fromJson(p as Map<String, dynamic>)).toList();
   }
 
-  /// Beli paket koin (MVP: pembayaran disimulasikan sukses).
-  Future<int> purchase(int packageId) async {
+  /// Beli paket koin via Midtrans — mengembalikan snap_token & order_id.
+  Future<Map<String, dynamic>> purchase(int packageId) async {
     final res = await _api.post(ApiConstants.purchasePackage(packageId));
-    final data = res['data'] as Map<String, dynamic>? ?? const {};
-    return (data['balance'] as num?)?.toInt() ?? 0;
+    return res['data'] as Map<String, dynamic>? ?? const {};
   }
 
   /// Riwayat transaksi (untuk layar dompet sederhana).

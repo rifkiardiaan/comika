@@ -8,6 +8,7 @@ use App\Models\CoinPackage;
 use App\Services\MidtransService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -22,10 +23,10 @@ class CoinPackageController extends Controller
      */
     public function index(): JsonResponse
     {
-        $packages = CoinPackage::query()
+        $packages = Cache::remember('coin_packages_active', 600, fn () => CoinPackage::query()
             ->where('is_active', true)
             ->orderBy('coins')
-            ->get();
+            ->get());
 
         return response()->json([
             'success' => true,

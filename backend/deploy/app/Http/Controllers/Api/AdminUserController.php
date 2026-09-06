@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateUserRoleRequest;
 use App\Http\Resources\AdminUserResource;
+use App\Models\ActivityLog;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,7 +64,16 @@ class AdminUserController extends Controller
             ], 422);
         }
 
+        $oldRole = $user->role;
         $user->update(['role' => $request->role]);
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            $request->user(),
+            ActivityLog::ACTION_USER_ROLE,
+            'Admin mengubah role ' . $user->name . ' dari ' . $oldRole . ' menjadi ' . $user->role,
+            $user
+        );
 
         return response()->json([
             'success' => true,
@@ -84,7 +95,17 @@ class AdminUserController extends Controller
             ], 422);
         }
 
+        $name = $user->name;
         $user->delete();
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            $request->user(),
+            ActivityLog::ACTION_USER_PERMANENT_BAN,
+            'Admin menghapus akun user ' . $name,
+            null,
+            ['user_id' => $user->id]
+        );
 
         return response()->json([
             'success' => true,
@@ -117,6 +138,14 @@ class AdminUserController extends Controller
         // Revoke semua token sanctum agar user langsung logout
         $user->tokens()->delete();
 
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            $request->user(),
+            ActivityLog::ACTION_USER_BAN,
+            'Admin memblokir sementara akun ' . $user->name . ($request->input('ban_reason') ? ' — ' . $request->input('ban_reason') : ''),
+            $user
+        );
+
         return response()->json([
             'success' => true,
             'message' => "Akun {$user->name} berhasil diblokir sementara.",
@@ -125,18 +154,70 @@ class AdminUserController extends Controller
     }
 
     /**
-     * Buka blokir akun user.
+     * Buka blokir akun user — mengembalikan akses login penuh.
+     * Membersihkan ban sementara maupun permanent (admin bisa
+     * mengaktifkan kembali login untuk user yang di-ban permanen).
      */
     public function unban(Request $request, User $user): JsonResponse
     {
         DB::table('users')->where('id', $user->id)->update([
             'is_banned' => false,
+            'is_permanently_banned' => false,
             'ban_reason' => null,
         ]);
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            $request->user(),
+            ActivityLog::ACTION_USER_UNBAN,
+            'Admin membuka blokir akun ' . $user->name,
+            $user
+        );
 
         return response()->json([
             'success' => true,
             'message' => "Blokir akun {$user->name} berhasil dibuka.",
+            'data' => new AdminUserResource($user->fresh()->loadCount('comics')),
+        ]);
+    }
+
+    /**
+     * Atur izin upload komik seorang user (biasanya creator).
+     * Saat komik diblokir, izin upload otomatis dimatikan; admin
+     * bisa menyalakannya kembali kapan saja di sini.
+     */
+    public function setUploadPermission(Request $request, User $user): JsonResponse
+    {
+        if ($request->user()->id === $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak dapat mengubah izin upload akun sendiri.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'can_upload' => 'required|boolean',
+        ]);
+
+        $allowed = (bool) $validated['can_upload'];
+
+        DB::table('users')->where('id', $user->id)->update([
+            'can_upload' => $allowed ? 1 : 0,
+        ]);
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            $request->user(),
+            $allowed ? ActivityLog::ACTION_USER_UNBAN : ActivityLog::ACTION_USER_BAN,
+            ($allowed ? 'Admin mengizinkan kembali upload komik ' : 'Admin menonaktifkan upload komik ') . $user->name,
+            $user
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $allowed
+                ? "Izin upload komik {$user->name} berhasil diaktifkan kembali."
+                : "Izin upload komik {$user->name} berhasil dinonaktifkan.",
             'data' => new AdminUserResource($user->fresh()->loadCount('comics')),
         ]);
     }
@@ -168,6 +249,14 @@ class AdminUserController extends Controller
 
         // Hapus semua data terkait (soft delete komik)
         $user->comics()->delete();
+
+        // Riwayat aktivitas
+        app(ActivityLogService::class)->log(
+            $request->user(),
+            ActivityLog::ACTION_USER_PERMANENT_BAN,
+            'Admin memblokir permanen akun ' . $user->name . ' — ' . $request->input('ban_reason'),
+            $user
+        );
 
         return response()->json([
             'success' => true,
@@ -264,6 +353,14 @@ class AdminUserController extends Controller
 
             DB::commit();
 
+            // Riwayat aktivitas
+            app(ActivityLogService::class)->log(
+                $request->user(),
+                ActivityLog::ACTION_SUBSCRIPTION,
+                'Admin memberikan VVIP ke ' . $user->name . ' selama ' . $days . ' hari',
+                $user
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => "VVIP berhasil diberikan ke {$user->name} selama {$days} hari.",
@@ -334,6 +431,14 @@ class AdminUserController extends Controller
             ]);
 
             DB::commit();
+
+            // Riwayat aktivitas
+            app(ActivityLogService::class)->log(
+                $request->user(),
+                ActivityLog::ACTION_SUBSCRIPTION,
+                'Admin memberikan Premium ke ' . $user->name . ' selama ' . $days . ' hari',
+                $user
+            );
 
             return response()->json([
                 'success' => true,
@@ -406,6 +511,14 @@ class AdminUserController extends Controller
             ]);
 
             DB::commit();
+
+            // Riwayat aktivitas
+            app(ActivityLogService::class)->log(
+                $request->user(),
+                ActivityLog::ACTION_SUBSCRIPTION,
+                'Admin meng-upgrade ' . $user->name . ' ke VVIP selama ' . $days . ' hari',
+                $user
+            );
 
             return response()->json([
                 'success' => true,

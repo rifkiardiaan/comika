@@ -14,6 +14,7 @@ class Episode extends Model
     use HasFactory, SoftDeletes;
 
     public const STATUS_DRAFT = 'draft';
+    public const STATUS_PENDING = 'pending';
     public const STATUS_PUBLISHED = 'published';
 
     protected $fillable = [
@@ -26,6 +27,7 @@ class Episode extends Model
         'view_count',
         'like_count',
         'published_at',
+        'rejection_reason',
     ];
 
     protected $casts = [

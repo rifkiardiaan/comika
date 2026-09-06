@@ -50,18 +50,14 @@ export default function AdminReadingReportPage() {
   const [typeFilter, setTypeFilter] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [statsLoading, setStatsLoading] = useState(true)
   const [error, setError] = useState('')
 
   const fetchStats = useCallback(async () => {
-    setStatsLoading(true)
     try {
       const data = await admin.readingStats()
       setStats(data)
     } catch {
       // stats opsional
-    } finally {
-      setStatsLoading(false)
     }
   }, [])
 

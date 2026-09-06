@@ -66,6 +66,16 @@ class ApiConstants {
   static String purchasePackage(int packageId) => '$coinPackages/$packageId/purchase';
   static String comicComments(int comicId) => '$comics/$comicId/comments';
 
+  // Subscription (Premium & VVIP)
+  static const String subscriptionPlans = '$baseUrl/subscription/plans';
+  static const String subscriptionStatus = '$baseUrl/subscription/status';
+  static const String subscriptionHistory = '$baseUrl/subscription/history';
+  static const String subscriptionSubscribe = '$baseUrl/subscription/subscribe';
+  static const String subscriptionCancel = '$baseUrl/subscription/cancel';
+
+  // Midtrans
+  static const String midtransVerifyPayment = '$baseUrl/midtrans/verify-payment';
+
   // Creator
   static const String creatorDashboard = '$baseUrl/creator/dashboard';
   static const String creatorComics = '$baseUrl/creator/comics';

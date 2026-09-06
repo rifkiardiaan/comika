@@ -21,6 +21,7 @@ export interface User {
   is_banned: boolean
   is_permanently_banned: boolean
   ban_reason: string | null
+  can_upload: boolean
   created_at: string
 }
 
@@ -43,7 +44,7 @@ export interface Genre {
 
 export type ComicStatus = 'ongoing' | 'completed' | 'hiatus'
 export type ComicAgeRating = 'semua_umur' | 'remaja' | 'dewasa'
-export type VerificationStatus = 'pending' | 'approved' | 'rejected'
+export type VerificationStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'blocked'
 
 export interface Comic {
   id: number
@@ -63,7 +64,7 @@ export interface Comic {
   created_at: string
 }
 
-export type EpisodeStatus = 'draft' | 'published'
+export type EpisodeStatus = 'draft' | 'pending' | 'published'
 
 export interface Episode {
   id: number
@@ -378,17 +379,21 @@ export interface FollowItem {
 export interface CreatorComic extends Comic {
   published_episodes_count: number
   draft_episodes_count: number
+  pending_episodes_count: number
   followers_count: number
   comments_count: number
   bookmarks_count: number
   verification_status: VerificationStatus
   rejection_reason: string | null
+  published_at: string | null
   episodes?: CreatorEpisode[]
 }
 
 export interface CreatorEpisode extends Episode {
   comments_count?: number
   pages?: EpisodePage[]
+  /** Diisi saat admin menolak episode — episode kembali ke draft & creator harus perbaiki. */
+  rejection_reason?: string | null
 }
 
 export interface CreatorDashboard {
@@ -402,6 +407,12 @@ export interface CreatorDashboard {
   total_comments: number
   rating_avg: number
   earnings: { pending: number; paid: number; total: number }
+  reading_report?: {
+    free_reads: number
+    paid_reads: number
+    total_coins_from_paid: number
+    free_vs_paid_ratio: string
+  }
   recent_episodes: Array<{
     id: number
     comic_id: number
@@ -435,6 +446,7 @@ export interface ComicAnalytics {
     episodes: number
     published_episodes: number
     draft_episodes: number
+    pending_episodes: number
   }
   episodes: Array<{
     id: number
@@ -560,6 +572,51 @@ export interface AdminComment {
   created_at: string
 }
 
+/* ------------------------------------------------------------------ */
+/* Riwayat Aktivitas (feature 13) — activity logs                      */
+/* ------------------------------------------------------------------ */
+
+export type ActivityLogAction =
+  | 'comic_upload'
+  | 'comic_verify'
+  | 'comic_publish'
+  | 'comic_block'
+  | 'comic_ban'
+  | 'episode_submit'
+  | 'episode_publish'
+  | 'episode_reject'
+  | 'episode_delete'
+  | 'coin_purchase'
+  | 'episode_unlock'
+  | 'subscription'
+  | 'comic_download'
+  | 'comment_moderate'
+  | 'user_role'
+  | 'user_ban'
+  | 'user_unban'
+  | 'user_permanent_ban'
+  | 'creator_approve'
+
+export interface ActivityLogItem {
+  id: number
+  action: ActivityLogAction | string
+  description: string | null
+  user: { id: number; name: string; username: string; avatar_url: string | null } | null
+  subject_type: string | null
+  subject_id: number | null
+  metadata: Record<string, unknown> | null
+  ip_address: string | null
+  created_at: string | null
+}
+
+export interface ActivityLogListResponse {
+  success: boolean
+  message: string
+  data: ActivityLogItem[]
+  meta: PaginationMeta
+  available_actions: string[]
+}
+
 export type ReportStatus = 'pending' | 'resolved' | 'dismissed'
 
 export interface AdminReport {
@@ -591,6 +648,21 @@ export interface DashboardStats {
   comments: number
   reports: { pending: number }
   engagement: { total_views: number; total_likes: number }
+  revenue: { total: number; monthly: number; total_unlocks: number }
+  pending_verification: number
+  activities: {
+    total: number
+    today: number
+    last_7_days: number
+    by_action: Array<{ action: string; count: number }>
+    recent: Array<{
+      id: number
+      action: string
+      description: string | null
+      user_name: string | null
+      created_at: string | null
+    }>
+  }
   recent_users: Array<{
     id: number
     name: string

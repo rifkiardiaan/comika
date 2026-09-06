@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -7,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/episode.dart';
 import '../../../services/api_service.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/download_service.dart';
 import '../data/reader_repository.dart';
 
 /// Reader webtoon vertikal — halaman penuh, scroll vertikal.
@@ -29,6 +31,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
   String? _error;
   bool _unlocking = false;
   double _progress = 0;
+  bool _isDownloaded = false;
+  bool _downloading = false;
+  double _downloadProgress = 0;
+  List<String> _localPagePaths = [];
 
   Timer? _progressDebounce;
 
@@ -36,6 +42,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void initState() {
     super.initState();
     _load();
+    _checkDownloaded();
     _scrollController.addListener(_onScroll);
   }
 
@@ -59,12 +66,39 @@ class _ReaderScreenState extends State<ReaderScreen> {
         _detail = detail;
         _loading = false;
       });
+      // Jika sudah didownload, load dari local
+      if (_isDownloaded) {
+        await _loadLocalPages();
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.message;
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _checkDownloaded() async {
+    _isDownloaded = await DownloadService.instance.isDownloaded(widget.episodeId);
+    if (_isDownloaded && mounted) {
+      setState(() {});
+      await _loadLocalPages();
+    }
+  }
+
+  Future<void> _loadLocalPages() async {
+    final items = await DownloadService.instance.getAll();
+    final item = items.where((e) => e.episodeId == widget.episodeId).firstOrNull;
+    if (item != null && mounted) {
+      // Verify files still exist
+      final existing = <String>[];
+      for (final path in item.localPagePaths) {
+        if (await File(path).exists()) {
+          existing.add(path);
+        }
+      }
+      setState(() => _localPagePaths = existing);
     }
   }
 
@@ -85,6 +119,74 @@ class _ReaderScreenState extends State<ReaderScreen> {
         isCompleted: pct >= 98,
       ).catchError((_) {});
     });
+  }
+
+  Future<void> _downloadEpisode() async {
+    if (_detail == null || _downloading) return;
+    setState(() {
+      _downloading = true;
+      _downloadProgress = 0;
+    });
+    try {
+      final comicTitle = _detail!.episode.title;
+      await DownloadService.instance.downloadWithNotification(
+        detail: _detail!,
+        comicTitle: comicTitle,
+        comicCoverUrl: null,
+        onProgress: (current, total, progress) {
+          if (mounted) setState(() => _downloadProgress = progress);
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _isDownloaded = true;
+          _downloading = false;
+        });
+        await _loadLocalPages();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Episode berhasil didownload untuk baca offline!')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _downloading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal download: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteDownload() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Download'),
+        content: const Text('Episode akan dihapus dari storage lokal. Kamu masih bisa membacanya secara online.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await DownloadService.instance.deleteEpisode(widget.episodeId);
+    if (mounted) {
+      setState(() {
+        _isDownloaded = false;
+        _localPagePaths = [];
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Download dihapus.')),
+      );
+    }
   }
 
   Future<void> _unlock() async {
@@ -157,6 +259,27 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     ),
                   ),
                   Text('${_progress.toStringAsFixed(0)}%', style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                  const SizedBox(width: 4),
+                  _downloading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            value: _downloadProgress,
+                            strokeWidth: 2,
+                            color: AppTheme.brand,
+                          ),
+                        )
+                      : IconButton(
+                          icon: Icon(
+                            _isDownloaded ? Icons.download_done : Icons.download,
+                            size: 20,
+                            color: _isDownloaded ? Colors.greenAccent : Colors.grey.shade500,
+                          ),
+                          onPressed: _isDownloaded ? _deleteDownload : _downloadEpisode,
+                          visualDensity: VisualDensity.compact,
+                          tooltip: _isDownloaded ? 'Hapus download' : 'Download episode',
+                        ),
                 ],
               ),
             ),
@@ -175,16 +298,32 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ? const Center(child: Text('Episode ini belum memiliki halaman.'))
               : ListView.builder(
                   controller: _scrollController,
-                  itemCount: detail.pages.length + 1,
+                  itemCount: (_localPagePaths.isNotEmpty ? _localPagePaths.length : detail.pages.length) + 1,
                   itemBuilder: (context, index) {
-                    if (index == detail.pages.length) {
+                    if (index == (_localPagePaths.isNotEmpty ? _localPagePaths.length : detail.pages.length)) {
                       return _buildEpisodeNav(detail);
                     }
-                    final page = detail.pages[index];
-                    final imageUrl = ApiConstants.assetUrl(page.imageUrl);
+                    final isLocal = _localPagePaths.isNotEmpty && index < _localPagePaths.length;
+                    final imageUrl = isLocal ? '' : ApiConstants.assetUrl(detail.pages[index].imageUrl);
+                    final localPath = isLocal ? _localPagePaths[index] : null;
                     return Column(
                       children: [
-                        if (imageUrl.isNotEmpty)
+                        if (isLocal)
+                          Image.file(
+                            File(localPath!),
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stack) => Container(
+                              height: MediaQuery.of(context).size.height * 0.7,
+                              alignment: Alignment.center,
+                              color: const Color(0xFF1E1B4B),
+                              child: Text(
+                                'Halaman ${index + 1}',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white70),
+                              ),
+                            ),
+                          )
+                        else if (imageUrl.isNotEmpty)
                           Image.network(
                             imageUrl,
                             width: double.infinity,
@@ -206,7 +345,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                               alignment: Alignment.center,
                               color: const Color(0xFF1E1B4B),
                               child: Text(
-                                'Halaman ${page.pageNumber}',
+                                'Halaman ${detail.pages[index].pageNumber}',
                                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white70),
                               ),
                             ),
