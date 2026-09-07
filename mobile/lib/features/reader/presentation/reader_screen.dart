@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/upgrade_ad_banner.dart';
 import '../../../models/episode.dart';
 import '../../../services/api_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/download_service.dart';
+import '../../comic/data/comic_detail_repository.dart';
 import '../data/reader_repository.dart';
 
 /// Reader webtoon vertikal — halaman penuh, scroll vertikal.
@@ -128,11 +130,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
       _downloadProgress = 0;
     });
     try {
-      final comicTitle = _detail!.episode.title;
+      final detail = _detail!;
+      String comicTitle = detail.episode.title;
+      String? coverUrl;
+      // Ambil judul + cover komik agar tampil benar di "Komik Offline".
+      try {
+        final comicDetail = await ComicDetailRepository().fetch(widget.comicId);
+        comicTitle = comicDetail.comic.title;
+        coverUrl = comicDetail.comic.coverUrl;
+      } catch (_) {
+        // Fallback ke judul episode bila detail komik tidak dapat dimuat
+      }
       await DownloadService.instance.downloadWithNotification(
-        detail: _detail!,
+        detail: detail,
         comicTitle: comicTitle,
-        comicCoverUrl: null,
+        comicCoverUrl: coverUrl,
         onProgress: (current, total, progress) {
           if (mounted) setState(() => _downloadProgress = progress);
         },
@@ -220,6 +232,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final detail = _detail!;
     final episode = detail.episode;
     final locked = episode.isPremium && !episode.isUnlocked;
+    final pageCount = _localPagePaths.isNotEmpty ? _localPagePaths.length : detail.pages.length;
 
     if (locked) {
       return _buildLockScreen(episode);
@@ -298,14 +311,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ? const Center(child: Text('Episode ini belum memiliki halaman.'))
               : ListView.builder(
                   controller: _scrollController,
-                  itemCount: (_localPagePaths.isNotEmpty ? _localPagePaths.length : detail.pages.length) + 1,
+                  itemCount: pageCount + 1,
                   itemBuilder: (context, index) {
-                    if (index == (_localPagePaths.isNotEmpty ? _localPagePaths.length : detail.pages.length)) {
+                    if (index == pageCount) {
                       return _buildEpisodeNav(detail);
                     }
                     final isLocal = _localPagePaths.isNotEmpty && index < _localPagePaths.length;
                     final imageUrl = isLocal ? '' : ApiConstants.assetUrl(detail.pages[index].imageUrl);
                     final localPath = isLocal ? _localPagePaths[index] : null;
+                    // Iklan setiap 3 halaman (sama seperti di web) —
+                    // hanya akun non-premium/non-vvip. Iklan 100% lokal,
+                    // tetap tampil saat offline (komik offline).
+                    final showAd = _showAds && pageCount > 1 && (index + 1) % 3 == 0 && index < pageCount - 1;
                     return Column(
                       children: [
                         if (isLocal)
@@ -349,6 +366,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
                                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white70),
                               ),
                             ),
+                          ),
+                        if (showAd)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: UpgradeAdBanner(full: true),
                           ),
                       ],
                     );
@@ -488,6 +510,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
         builder: (_) => ReaderScreen(comicId: widget.comicId, episodeId: episodeId),
       ),
     );
+  }
+
+  /// Iklan hanya untuk akun non-premium & non-vvip (sama seperti di web).
+  bool get _showAds {
+    final user = AuthService.instance.user;
+    return !(user?.isPremium ?? false) && !(user?.isVvip ?? false);
   }
 }
 

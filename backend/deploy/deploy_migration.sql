@@ -97,6 +97,34 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- ============================================================
+-- Riwayat Aktivitas (feature 13): tabel activity_logs
+-- ============================================================
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'activity_logs');
+SET @sql = IF(@exists = 0,
+    'CREATE TABLE `activity_logs` (
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `user_id` BIGINT UNSIGNED DEFAULT NULL,
+        `action` VARCHAR(60) NOT NULL,
+        `description` VARCHAR(500) DEFAULT NULL,
+        `subject_type` VARCHAR(120) DEFAULT NULL,
+        `subject_id` BIGINT UNSIGNED DEFAULT NULL,
+        `metadata` JSON DEFAULT NULL,
+        `ip_address` VARCHAR(45) DEFAULT NULL,
+        `created_at` TIMESTAMP NULL DEFAULT NULL,
+        `updated_at` TIMESTAMP NULL DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `activity_logs_user_id_index` (`user_id`),
+        KEY `activity_logs_action_index` (`action`),
+        KEY `activity_logs_subject_type_subject_id_index` (`subject_type`, `subject_id`),
+        KEY `activity_logs_created_at_index` (`created_at`),
+        CONSTRAINT `activity_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+    'SELECT "activity_logs table already exists" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- ============================================================
 -- Comics: tambah status 'blocked' (Diblokir oleh admin)
 -- Komik diblokir tidak tampil publik; creator tetap bisa login
 -- tapi izin upload dimatikan lewat users.can_upload
@@ -126,6 +154,32 @@ WHERE `verification_status` = 'rejected'
   AND `status` = 'hiatus'
   AND `published_at` IS NULL
   AND `rejection_reason` = 'Komik diblokir oleh admin.';
+
+-- ============================================================
+-- Platform Settings — pengaturan pembagian pendapatan
+-- (fitur: Pendapatan Admin & Creator + Pembagian Pendapatan)
+-- ============================================================
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'platform_settings');
+SET @sql = IF(@exists = 0,
+    'CREATE TABLE `platform_settings` (
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `key` VARCHAR(255) NOT NULL,
+        `value` TEXT NULL,
+        `created_at` TIMESTAMP NULL DEFAULT NULL,
+        `updated_at` TIMESTAMP NULL DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `platform_settings_key_unique` (`key`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+    'SELECT "platform_settings table already exists" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Nilai default pembagian pendapatan (hanya tersimpan saat belum ada)
+INSERT IGNORE INTO `platform_settings` (`key`, `value`, `created_at`, `updated_at`) VALUES
+    ('revenue.creator_share', '0.6', NOW(), NOW()),
+    ('revenue.admin_share', '0.4', NOW(), NOW()),
+    ('revenue.coin_value', '100', NOW(), NOW());
 
 -- ============================================================
 -- Selesai! Sekarang deploy code baru

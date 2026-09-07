@@ -40,9 +40,9 @@ class DownloadController extends Controller
     }
 
     /**
-     * Download APK file — streaming response.
+     * Download APK file — dikirim langsung (binary file response).
      */
-    public function download(): \Symfony\Component\HttpFoundation\StreamedResponse|JsonResponse
+    public function download(): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
     {
         $apkPath = public_path(self::APK_DIR . '/' . self::APK_FILENAME);
 
@@ -53,29 +53,9 @@ class DownloadController extends Controller
             ], 404);
         }
 
-        $size = File::size($apkPath);
-
-        return response()->stream(function () use ($apkPath) {
-            $handle = fopen($apkPath, 'rb');
-            if ($handle) {
-                $chunkSize = 8192;
-                while (!feof($handle)) {
-                    echo fread($handle, $chunkSize);
-                    if (connection_aborted()) {
-                        break;
-                    }
-                    ob_flush();
-                    flush();
-                }
-                fclose($handle);
-            }
-        }, 200, [
-            'Content-Type' => 'application/vnd.android.package-archive',
-            'Content-Disposition' => 'attachment; filename="comika.apk"',
-            'Content-Length' => $size,
+        return response()->download($apkPath, self::APK_FILENAME, [
             'Cache-Control' => 'no-cache, must-revalidate',
             'Pragma' => 'no-cache',
-            'X-Download-Size' => $size,
         ]);
     }
 

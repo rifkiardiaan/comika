@@ -15,6 +15,7 @@ import type {
   Genre,
   PaginationMeta,
   ReportStatus,
+  RevenueShareSettings,
   Role,
   TransactionStatus,
   TransactionType,
@@ -157,8 +158,47 @@ export const admin = {
     return data.data
   },
 
-  async revenue(): Promise<{ total_revenue: number; monthly_revenue: number; total_coin_revenue: number; revenue_by_comic: Array<{ comic_id: number; comic_title: string; total_creator_earnings: number; total_revenue: number }> }> {
-    const { data } = await api.get<{ data: { total_revenue: number; monthly_revenue: number; total_coin_revenue: number; revenue_by_comic: Array<{ comic_id: number; comic_title: string; total_creator_earnings: number; total_revenue: number }> } }>('/admin/revenue')
+  async revenue(): Promise<{
+    total_revenue: number
+    monthly_revenue: number
+    total_coin_revenue: number
+    revenue_by_comic: Array<{
+      comic_id: number
+      comic_title: string
+      total_creator_earnings: number
+      gross_revenue: number
+      admin_revenue: number
+      total_revenue: number
+    }>
+    settings: RevenueShareSettings
+  }> {
+    const { data } = await api.get<{
+      data: {
+        total_revenue: number
+        monthly_revenue: number
+        total_coin_revenue: number
+        revenue_by_comic: Array<{
+          comic_id: number
+          comic_title: string
+          total_creator_earnings: number
+          gross_revenue: number
+          admin_revenue: number
+          total_revenue: number
+        }>
+        settings: RevenueShareSettings
+      }
+    }>('/admin/revenue')
+    return data.data
+  },
+
+  // ============ Pendapatan & Pembagian Pendapatan (Revenue Share) ============
+  async revenueSettings(): Promise<{ settings: RevenueShareSettings; preview: { total_coins: number; total_revenue: number; creator_earnings: number; admin_earnings: number; coin_value: number } }> {
+    const { data } = await api.get<{ data: { settings: RevenueShareSettings; preview: { total_coins: number; total_revenue: number; creator_earnings: number; admin_earnings: number; coin_value: number } } }>('/admin/revenue/settings')
+    return data.data
+  },
+
+  async updateRevenueSettings(payload: { creator_share: number; coin_value?: number }): Promise<RevenueShareSettings> {
+    const { data } = await api.put<{ data: RevenueShareSettings }>('/admin/revenue/settings', payload)
     return data.data
   },
 

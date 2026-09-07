@@ -697,31 +697,36 @@ class AdminComicController extends Controller
 
     /**
      * Pendapatan admin dari komik (revenue dari platform).
-     * Admin mendapatkan 40% dari setiap unlock episode premium.
+     * Admin mendapatkan share dari setiap unlock episode premium
+     * (share disimpan di platform_settings, default 40%).
      */
     public function revenue(Request $request): JsonResponse
     {
+        $revenueShare = app(\App\Services\RevenueShareService::class);
+        $coinValue = $revenueShare->coinValue();
+        $adminShare = $revenueShare->adminShare();
+
         $totalRevenue = (float) DB::table('transactions')
             ->where('type', 'episode_unlock')
             ->where('status', 'success')
-            ->sum('coins') * 100 * 0.40;
+            ->sum('coins') * $coinValue * $adminShare;
 
         $monthlyRevenue = (float) DB::table('transactions')
             ->where('type', 'episode_unlock')
             ->where('status', 'success')
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
-            ->sum('coins') * 100 * 0.40;
+            ->sum('coins') * $coinValue * $adminShare;
 
         $totalCoinRevenue = (int) DB::table('transactions')
             ->where('type', 'episode_unlock')
             ->where('status', 'success')
             ->sum('coins');
 
-        $adminSharePerCoin = 100 * 0.40; // 40% dari Rp 100 per koin
+        $adminSharePerCoin = $coinValue * $adminShare;
         $totalPlatformRevenue = $totalCoinRevenue * $adminSharePerCoin;
 
-        // Revenue per komik
+        // Revenue per komik: gross (nilai total unlock) + bagian creator & admin
         $revenueByComic = DB::table('creator_earnings')
             ->join('episodes', 'creator_earnings.episode_id', '=', 'episodes.id')
             ->join('comics', 'episodes.comic_id', '=', 'comics.id')
@@ -729,12 +734,25 @@ class AdminComicController extends Controller
                 'comics.id as comic_id',
                 'comics.title as comic_title',
                 DB::raw('SUM(creator_earnings.amount) as total_creator_earnings'),
-                DB::raw('SUM(creator_earnings.amount * 0.40 / 0.60) as total_revenue')
+                DB::raw('SUM(creator_earnings.amount / ' . $revenueShare->creatorShare() . ') as gross_revenue')
             )
             ->groupBy('comics.id', 'comics.title')
-            ->orderByDesc('total_revenue')
+            ->orderByDesc('gross_revenue')
             ->limit(10)
-            ->get();
+            ->get()
+            ->map(function ($row) use ($adminShare) {
+                $gross = round((float) $row->gross_revenue, 2);
+
+                return [
+                    'comic_id' => $row->comic_id,
+                    'comic_title' => $row->comic_title,
+                    'total_creator_earnings' => round((float) $row->total_creator_earnings, 2),
+                    'gross_revenue' => $gross,
+                    'admin_revenue' => round($gross * $adminShare, 2),
+                    'total_revenue' => $gross,
+                ];
+            })
+            ->values();
 
         return response()->json([
             'success' => true,
@@ -744,6 +762,7 @@ class AdminComicController extends Controller
                 'monthly_revenue' => round($monthlyRevenue, 2),
                 'total_coin_revenue' => $totalCoinRevenue,
                 'revenue_by_comic' => $revenueByComic,
+                'settings' => $revenueShare->settings(),
             ],
         ]);
     }

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import api from '../services/api'
 
-const APK_URL = import.meta.env.VITE_APK_URL || '/api/v1/download/apk'
+const APK_URL = import.meta.env.VITE_APK_URL || '/downloads/comika.apk'
 const VERSION_URL = import.meta.env.VITE_APK_VERSION_URL || '/api/v1/download/version'
 
 interface VersionInfo {

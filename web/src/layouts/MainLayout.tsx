@@ -4,11 +4,14 @@ import Footer from '../components/Footer'
 import ErrorBoundary from '../components/ErrorBoundary'
 import OfflineBanner from '../components/OfflineBanner'
 import OfflineGate from '../components/OfflineGate'
+import NotificationPopup from '../components/NotificationPopup'
 
 export default function MainLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-surface-950 text-surface-100">
       <Navbar />
+      {/* Popup notifikasi baru — muncul otomatis di atas layar */}
+      <NotificationPopup />
       <main className="flex-1">
         <OfflineGate>
           <ErrorBoundary>

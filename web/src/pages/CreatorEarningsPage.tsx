@@ -12,6 +12,7 @@ import {
   Loader2,
   Lock,
   LogIn,
+  Percent,
   TrendingUp,
   Wallet,
   XCircle,
@@ -237,6 +238,30 @@ export default function CreatorEarningsPage() {
           <p className="mt-1 text-[11px] text-surface-400">Penarikan menunggu/diajukan</p>
         </div>
       </section>
+
+      {/* ====== Pembagian pendapatan ====== */}
+      {summary?.revenue_share && (
+        <section className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-surface-800 bg-surface-900/60 p-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+              <Percent size={17} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-surface-100">
+                Kamu menerima <span className="text-emerald-300">{Math.round(summary.revenue_share.creator_share * 100)}%</span> dari setiap
+                pembelian unlock · platform {Math.round(summary.revenue_share.admin_share * 100)}%
+              </p>
+              <p className="text-xs text-surface-500">
+                Contoh: episode premium 50 koin = Rp {summary.revenue_share.coin_value * 50} · kamu{' '}
+                <span className="text-emerald-300">
+                  Rp {Math.round(50 * summary.revenue_share.coin_value * summary.revenue_share.creator_share)}
+                </span>{' '}
+                · platform Rp {Math.round(50 * summary.revenue_share.coin_value * summary.revenue_share.admin_share)}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ====== Withdrawal form + info ====== */}
       <section className="mt-8 grid gap-6 lg:grid-cols-5">

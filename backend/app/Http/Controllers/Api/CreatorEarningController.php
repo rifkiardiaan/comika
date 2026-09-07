@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CreatorEarningResource;
 use App\Models\CreatorEarning;
 use App\Services\MonetizationService;
+use App\Services\RevenueShareService;
 use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class CreatorEarningController extends Controller
     public function __construct(
         private readonly MonetizationService $monetizationService,
         private readonly WalletService $walletService,
+        private readonly RevenueShareService $revenueShareService,
     ) {}
 
     /**
@@ -55,7 +57,7 @@ class CreatorEarningController extends Controller
      * Transfer saldo affiliate earnings ke dompet koin.
      *
      * Creator bisa menggunakan penghasilan affiliate untuk top-up
-     * dompet koin (1 koin = Rp 100).
+     * dompet koin (1 koin = Rp coin_value yang dikonfigurasi admin).
      */
     public function transferToWallet(Request $request): JsonResponse
     {
@@ -67,17 +69,18 @@ class CreatorEarningController extends Controller
 
         $amount = round((float) $validated['amount'], 2);
 
-        // 1 koin = Rp 100, jadi amount rupiah dibagi 100 = jumlah koin
-        $coinsToCredit = (int) floor($amount / MonetizationService::COIN_VALUE);
+        // 1 koin = Rp coin_value (bisa diubah admin), jadi jumlah koin = rupiah / coin_value
+        $coinValue = $this->revenueShareService->coinValue();
+        $coinsToCredit = (int) floor($amount / $coinValue);
 
         if ($coinsToCredit <= 0) {
             throw ValidationException::withMessages([
-                'amount' => ['Minimal transfer Rp 100 (1 koin).'],
+                'amount' => ['Minimal transfer Rp ' . number_format($coinValue, 0, ',', '.') . ' (1 koin).'],
             ]);
         }
 
-        // Actual rupiah yang dipotong (kelipatan 100)
-        $actualAmount = $coinsToCredit * MonetizationService::COIN_VALUE;
+        // Actual rupiah yang dipotong (kelipatan coin_value)
+        $actualAmount = $coinsToCredit * $coinValue;
 
         $summary = $this->monetizationService->earningsSummary($creator);
 

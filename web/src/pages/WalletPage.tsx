@@ -264,7 +264,8 @@ export default function WalletPage() {
   }
 
   const transferAmountNumber = Number(transferAmount.replace(/\D/g, '')) || 0
-  const transferCoins = Math.floor(transferAmountNumber / 100)
+  const coinValue = affiliateSummary?.revenue_share?.coin_value ?? 100
+  const transferCoins = Math.floor(transferAmountNumber / coinValue)
 
   return (
     <div className="mx-auto max-w-7xl animate-fade-in px-4 py-10 sm:px-6">
@@ -392,7 +393,7 @@ export default function WalletPage() {
         <section className="mt-10">
           <h2 className="font-display text-xl font-bold text-surface-50">Top-Up dari Saldo Affiliate</h2>
           <p className="mt-1 text-sm text-surface-400">
-            Gunakan penghasilan affiliate Anda untuk membeli koin. 1 koin = Rp 100.
+            Gunakan penghasilan affiliate Anda untuk membeli koin. 1 koin = Rp {coinValue.toLocaleString('id-ID')}.
           </p>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-5">
@@ -403,7 +404,7 @@ export default function WalletPage() {
                   <Landmark size={17} className="text-emerald-300" /> Transfer ke Dompet Koin
                 </h3>
                 <p className="mt-1 text-sm text-surface-400">
-                  Saldo affiliate akan dikonversi menjadi koin (Rp 100 = 1 koin).
+                  Saldo affiliate akan dikonversi menjadi koin (Rp {coinValue.toLocaleString('id-ID')} = 1 koin).
                 </p>
 
                 <form onSubmit={handleTransferFromAffiliate} className="mt-5 space-y-4">
@@ -492,8 +493,8 @@ export default function WalletPage() {
                 <div className="flex items-start gap-3 rounded-2xl border border-surface-800 bg-surface-900/60 p-5 text-xs text-surface-400">
                   <AlertCircle size={16} className="mt-0.5 shrink-0 text-surface-500" />
                   <p>
-                    Minimal transfer <span className="font-medium text-surface-300">Rp 100</span> (1 koin).
-                    Nominal akan dibulatkan ke kelipatan Rp 100.
+                    Minimal transfer <span className="font-medium text-surface-300">Rp {coinValue.toLocaleString('id-ID')}</span> (1 koin).
+                    Nominal akan dibulatkan ke kelipatan Rp {coinValue.toLocaleString('id-ID')}.
                   </p>
                 </div>
               </div>

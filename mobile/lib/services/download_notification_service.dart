@@ -1,5 +1,6 @@
-import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Service untuk menampilkan notifikasi system-level saat download episode.
@@ -15,6 +16,10 @@ class DownloadNotificationService {
   static const _channelDesc = 'Notifikasi progress download episode komik';
 
   /// Inisialisasi notification plugin.
+  ///
+  /// Di Android 13+ (API 33) izin [Permission.notification] harus diminta
+  /// secara runtime — tanpa ini notifikasi download tidak akan muncul.
+  /// Dipanggil dari [main.dart] dan sebelum download dimulai.
   Future<void> init() async {
     if (_initialized) return;
 
@@ -27,7 +32,6 @@ class DownloadNotificationService {
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
@@ -37,6 +41,13 @@ class DownloadNotificationService {
 
     // Create notification channel for Android
     await _createNotificationChannel();
+
+    // Android 13+: minta izin notifikasi runtime (no-op di versi < 13).
+    if (!kIsWeb && Platform.isAndroid) {
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.requestNotificationsPermission();
+    }
 
     _initialized = true;
   }

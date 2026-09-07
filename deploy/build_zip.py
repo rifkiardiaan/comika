@@ -45,6 +45,16 @@ with zipfile.ZipFile(ZIP_PATH, 'w', zipfile.ZIP_DEFLATED) as zf:
         for f in os.listdir(assets_dir):
             zf.write(os.path.join(assets_dir, f), prefix + "/assets/" + f)
 
+    # 2b. downloads/ -> public_html/downloads/ (APK & file unduhan lainnya)
+    # Penting: file statis ini disajikan langsung oleh web server TANPA
+    # melewati PHP, sehingga download APK tidak terpengaruh batasan PHP.
+    downloads_dir = os.path.join(dist_dir, "downloads")
+    if os.path.isdir(downloads_dir):
+        for f in os.listdir(downloads_dir):
+            full = os.path.join(downloads_dir, f)
+            if os.path.isfile(full):
+                zf.write(full, prefix + "/downloads/" + f)
+
     # 3. .htaccess + deploy scripts -> public_html/
     inf_dir = os.path.join(PROJECT_ROOT, "deploy", "infinityfree")
     for fname in ['.htaccess', '.user.ini', 'setup.php', 'diagnose.php', 'test.php', 'fix_db.php', 'update_db_password.php']:

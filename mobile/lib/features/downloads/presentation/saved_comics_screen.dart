@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/upgrade_ad_banner.dart';
 import '../../../models/downloaded_episode.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/download_service.dart';
 import '../../comic/presentation/comic_detail_screen.dart';
 import '../../reader/presentation/reader_screen.dart';
@@ -63,6 +65,12 @@ class _SavedComicsScreenState extends State<SavedComicsScreen> {
       map.putIfAbsent(d.comicId, () => []).add(d);
     }
     return map;
+  }
+
+  /// Iklan hanya untuk akun non-premium & non-vvip (sama seperti di web).
+  bool get _showAds {
+    final user = AuthService.instance.user;
+    return !(user?.isPremium ?? false) && !(user?.isVvip ?? false);
   }
 
   Future<void> _deleteEpisode(DownloadedEpisode item) async {
@@ -211,6 +219,12 @@ class _SavedComicsScreenState extends State<SavedComicsScreen> {
           ),
           const SizedBox(height: 20),
 
+          // Iklan banner offline (non-premium/non-vvip)
+          if (_showAds) ...[
+            const UpgradeAdBanner(full: false),
+            const SizedBox(height: 16),
+          ],
+
           // Section title
           Text(
             'Semua Komik ($_comicCount)',
@@ -287,7 +301,11 @@ class _SavedComicCard extends StatelessWidget {
               child: Row(
                 children: [
                   // Cover thumbnail
-                  _SavedCoverThumb(coverUrl: first.comicCoverUrl, title: first.comicTitle),
+                  _SavedCoverThumb(
+                    coverUrl: first.comicCoverUrl,
+                    localCoverPath: first.localCoverPath,
+                    title: first.comicTitle,
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -435,12 +453,26 @@ class _SavedEpisodeTile extends StatelessWidget {
 /// Cover thumbnail untuk saved comics screen.
 class _SavedCoverThumb extends StatelessWidget {
   final String? coverUrl;
+  final String? localCoverPath;
   final String title;
 
-  const _SavedCoverThumb({required this.coverUrl, required this.title});
+  const _SavedCoverThumb({required this.coverUrl, this.localCoverPath, required this.title});
 
   @override
   Widget build(BuildContext context) {
+    final local = localCoverPath ?? '';
+    if (local.isNotEmpty && File(local).existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.file(
+          File(local),
+          width: 52,
+          height: 72,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _fallback(),
+        ),
+      );
+    }
     final url = ApiConstants.assetUrl(coverUrl);
     if (url.isNotEmpty) {
       return ClipRRect(

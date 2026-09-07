@@ -12,6 +12,7 @@ use App\Models\Wallet;
 use App\Services\MidtransService;
 use App\Services\MonetizationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Mockery;
 use Tests\TestCase;
 
@@ -656,5 +657,151 @@ class MonetizationTest extends TestCase
     {
         $this->assertSame(100, MonetizationService::COIN_VALUE);
         $this->assertSame(0.60, MonetizationService::CREATOR_SHARE);
+    }
+
+    // ============ Pembagian Pendapatan (Revenue Share) ============
+
+    public function test_revenue_share_settings_default(): void
+    {
+        $this->withToken($this->adminToken())
+            ->getJson('/api/v1/admin/revenue/settings')
+            ->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.settings.creator_share', 0.60)
+            ->assertJsonPath('data.settings.admin_share', 0.40)
+            ->assertJsonPath('data.settings.coin_value', 100);
+    }
+
+    public function test_non_admin_cannot_access_revenue_settings(): void
+    {
+        $this->withToken($this->token($this->reader))
+            ->getJson('/api/v1/admin/revenue/settings')
+            ->assertStatus(403);
+
+        $this->withToken($this->token($this->reader))
+            ->putJson('/api/v1/admin/revenue/settings', ['creator_share' => 0.70])
+            ->assertStatus(403);
+    }
+
+    public function test_admin_can_update_revenue_share_settings(): void
+    {
+        $this->withToken($this->adminToken())
+            ->putJson('/api/v1/admin/revenue/settings', ['creator_share' => 0.70])
+            ->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.creator_share', 0.70)
+            ->assertJsonPath('data.admin_share', 0.30);
+
+        // Nilai tersimpan & dibaca ulang
+        $this->withToken($this->adminToken())
+            ->getJson('/api/v1/admin/revenue/settings')
+            ->assertJsonPath('data.settings.creator_share', 0.70)
+            ->assertJsonPath('data.settings.admin_share', 0.30);
+    }
+
+    public function test_revenue_share_validation_rejects_out_of_range(): void
+    {
+        $this->withToken($this->adminToken())
+            ->putJson('/api/v1/admin/revenue/settings', ['creator_share' => 0.03])
+            ->assertStatus(422);
+
+        $this->withToken($this->adminToken())
+            ->putJson('/api/v1/admin/revenue/settings', ['creator_share' => 0.99])
+            ->assertStatus(422);
+    }
+
+    public function test_creator_dashboard_and_earnings_include_revenue_share(): void
+    {
+        $this->withToken($this->token($this->creator))
+            ->getJson('/api/v1/creator/dashboard')
+            ->assertStatus(200)
+            ->assertJsonPath('data.earnings.revenue_share.creator_share', 0.60)
+            ->assertJsonPath('data.earnings.revenue_share.admin_share', 0.40)
+            ->assertJsonPath('data.earnings.revenue_share.coin_value', 100);
+
+        $this->withToken($this->token($this->creator))
+            ->getJson('/api/v1/creator/earnings')
+            ->assertStatus(200)
+            ->assertJsonPath('data.summary.revenue_share.creator_share', 0.60)
+            ->assertJsonPath('data.summary.revenue_share.admin_share', 0.40);
+    }
+
+    public function test_unlock_earnings_use_configured_share(): void
+    {
+        // Admin ubah share creator menjadi 70%
+        $this->withToken($this->adminToken())
+            ->putJson('/api/v1/admin/revenue/settings', ['creator_share' => 0.70])
+            ->assertStatus(200);
+
+        $comic = $this->createComic();
+        $episode = $this->createEpisode($comic, 2, true, 50);
+        $this->fund($this->reader, 500);
+
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $this->withToken($this->token($this->reader))
+            ->postJson("/api/v1/episodes/{$episode->id}/unlock")
+            ->assertStatus(201);
+
+        // 50 koin × Rp100 × 70% = Rp 3.500
+        $this->assertDatabaseHas('creator_earnings', [
+            'creator_id' => $this->creator->id,
+            'episode_id' => $episode->id,
+            'amount' => 3500.0,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_dashboard_and_settings_do_not_crash_when_platform_settings_table_missing(): void
+    {
+        // Simulasi kondisi produksi sebelum deploy_migration.sql dijalankan:
+        // tabel platform_settings belum ada — API harus tetap jalan pakai default.
+        Schema::dropIfExists('platform_settings');
+
+        $this->withToken($this->adminToken())
+            ->getJson('/api/v1/admin/dashboard')
+            ->assertStatus(200)
+            ->assertJsonPath('data.revenue.creator_share', 0.60)
+            ->assertJsonPath('data.revenue.admin_share', 0.40)
+            ->assertJsonPath('data.revenue.coin_value', 100);
+
+        $this->withToken($this->adminToken())
+            ->getJson('/api/v1/admin/revenue/settings')
+            ->assertStatus(200)
+            ->assertJsonPath('data.settings.creator_share', 0.60)
+            ->assertJsonPath('data.settings.admin_share', 0.40)
+            ->assertJsonPath('data.settings.coin_value', 100);
+
+        // PUT juga tidak boleh 500 walau tabel belum ada.
+        $this->withToken($this->adminToken())
+            ->putJson('/api/v1/admin/revenue/settings', ['creator_share' => 0.70])
+            ->assertSuccessful();
+    }
+
+    public function test_affiliate_transfer_uses_configured_coin_value(): void
+    {
+        // Admin ubah nilai 1 koin menjadi Rp 500
+        $this->withToken($this->adminToken())
+            ->putJson('/api/v1/admin/revenue/settings', ['creator_share' => 0.60, 'coin_value' => 500])
+            ->assertStatus(200);
+
+        $this->createPendingEarning(30000);
+
+        // Rp 30.000 ÷ Rp 500 = 60 koin (bukan 300 koin seperti saat 1 koin = Rp 100)
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $this->withToken($this->token($this->creator))
+            ->postJson('/api/v1/creator/earnings/transfer-to-wallet', ['amount' => 30000])
+            ->assertStatus(200)
+            ->assertJsonPath('data.coins_added', 60)
+            ->assertJsonPath('data.amount_deducted', 30000);
+
+        // Earning ditutup & dompet dikredit sesuai nilai koin yang dikonfigurasi
+        $this->assertDatabaseHas('creator_earnings', [
+            'creator_id' => $this->creator->id,
+            'amount' => 30000.0,
+            'status' => 'paid',
+        ]);
+
+        $wallet = Wallet::where('user_id', $this->creator->id)->first();
+        $this->assertEquals(60, $wallet->coin_balance);
     }
 }

@@ -115,6 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await AuthService.instance.deleteAvatar();
       if (mounted) {
+        setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Avatar berhasil dihapus.')),
         );
@@ -180,6 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await AuthService.instance.uploadAvatar(picked.path);
       if (mounted) {
+        setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Avatar berhasil diperbarui.')),
         );
@@ -1145,7 +1147,11 @@ class _DownloadedComicTile extends StatelessWidget {
           child: Row(
             children: [
               // Cover thumbnail
-              _ProfileCoverThumb(coverUrl: first.comicCoverUrl, title: first.comicTitle),
+              _ProfileCoverThumb(
+                coverUrl: first.comicCoverUrl,
+                localCoverPath: first.localCoverPath,
+                title: first.comicTitle,
+              ),
               const SizedBox(width: 12),
               // Info
               Expanded(
@@ -1184,12 +1190,26 @@ class _DownloadedComicTile extends StatelessWidget {
 /// Cover thumbnail untuk profil download section.
 class _ProfileCoverThumb extends StatelessWidget {
   final String? coverUrl;
+  final String? localCoverPath;
   final String title;
 
-  const _ProfileCoverThumb({required this.coverUrl, required this.title});
+  const _ProfileCoverThumb({required this.coverUrl, this.localCoverPath, required this.title});
 
   @override
   Widget build(BuildContext context) {
+    final local = localCoverPath ?? '';
+    if (local.isNotEmpty && File(local).existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.file(
+          File(local),
+          width: 44,
+          height: 60,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _fallback(),
+        ),
+      );
+    }
     final url = ApiConstants.assetUrl(coverUrl);
     if (url.isNotEmpty) {
       return ClipRRect(

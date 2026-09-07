@@ -121,11 +121,13 @@ class EarningsData {
   final double pending;
   final double paid;
   final double total;
+  final RevenueShareData? revenueShare;
 
   const EarningsData({
     required this.pending,
     required this.paid,
     required this.total,
+    this.revenueShare,
   });
 
   factory EarningsData.fromJson(Map<String, dynamic> json) {
@@ -133,6 +135,29 @@ class EarningsData {
       pending: (json['pending'] as num?)?.toDouble() ?? 0,
       paid: (json['paid'] as num?)?.toDouble() ?? 0,
       total: (json['total'] as num?)?.toDouble() ?? 0,
+      revenueShare: RevenueShareData.fromJson(json['revenue_share'] as Map<String, dynamic>?),
+    );
+  }
+}
+
+/// Model untuk pembagian pendapatan (revenue share) creator : platform.
+class RevenueShareData {
+  final double creatorShare;
+  final double adminShare;
+  final double coinValue;
+
+  const RevenueShareData({
+    required this.creatorShare,
+    required this.adminShare,
+    required this.coinValue,
+  });
+
+  factory RevenueShareData.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const RevenueShareData(creatorShare: 0.6, adminShare: 0.4, coinValue: 100);
+    return RevenueShareData(
+      creatorShare: (json['creator_share'] as num?)?.toDouble() ?? 0.6,
+      adminShare: (json['admin_share'] as num?)?.toDouble() ?? 0.4,
+      coinValue: (json['coin_value'] as num?)?.toDouble() ?? 100,
     );
   }
 }

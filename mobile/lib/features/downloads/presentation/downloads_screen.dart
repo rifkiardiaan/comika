@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/upgrade_ad_banner.dart';
 import '../../../models/downloaded_episode.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/download_service.dart';
 import '../../comic/presentation/comic_detail_screen.dart';
 import '../../reader/presentation/reader_screen.dart';
@@ -59,6 +61,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       map.putIfAbsent(d.comicId, () => []).add(d);
     }
     return map;
+  }
+
+  /// Iklan hanya untuk akun non-premium & non-vvip (sama seperti di web).
+  bool get _showAds {
+    final user = AuthService.instance.user;
+    return !(user?.isPremium ?? false) && !(user?.isVvip ?? false);
   }
 
   Future<void> _deleteEpisode(DownloadedEpisode item) async {
@@ -209,6 +217,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          // Iklan banner offline (non-premium/non-vvip)
+          if (_showAds) ...[
+            const UpgradeAdBanner(full: false),
+            const SizedBox(height: 8),
+          ],
           // Comic groups
           for (int index = 0; index < comicIds.length; index++)
             _ComicGroup(
@@ -272,7 +285,11 @@ class _ComicGroup extends StatelessWidget {
               child: Row(
                 children: [
                   // Cover thumbnail
-                  _CoverThumb(coverUrl: comicCoverUrl, title: comicTitle),
+                  _CoverThumb(
+                    coverUrl: comicCoverUrl,
+                    localCoverPath: episodes.first.localCoverPath,
+                    title: comicTitle,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -318,12 +335,26 @@ class _ComicGroup extends StatelessWidget {
 
 class _CoverThumb extends StatelessWidget {
   final String? coverUrl;
+  final String? localCoverPath;
   final String title;
 
-  const _CoverThumb({required this.coverUrl, required this.title});
+  const _CoverThumb({required this.coverUrl, this.localCoverPath, required this.title});
 
   @override
   Widget build(BuildContext context) {
+    final local = localCoverPath ?? '';
+    if (local.isNotEmpty && File(local).existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.file(
+          File(local),
+          width: 48,
+          height: 64,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _fallback(),
+        ),
+      );
+    }
     final url = ApiConstants.assetUrl(coverUrl);
     if (url.isNotEmpty) {
       return ClipRRect(

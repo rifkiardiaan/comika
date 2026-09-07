@@ -156,5 +156,31 @@ WHERE `verification_status` = 'rejected'
   AND `rejection_reason` = 'Komik diblokir oleh admin.';
 
 -- ============================================================
+-- Platform Settings — pengaturan pembagian pendapatan
+-- (fitur: Pendapatan Admin & Creator + Pembagian Pendapatan)
+-- ============================================================
+SET @exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'platform_settings');
+SET @sql = IF(@exists = 0,
+    'CREATE TABLE `platform_settings` (
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `key` VARCHAR(255) NOT NULL,
+        `value` TEXT NULL,
+        `created_at` TIMESTAMP NULL DEFAULT NULL,
+        `updated_at` TIMESTAMP NULL DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `platform_settings_key_unique` (`key`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+    'SELECT "platform_settings table already exists" AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Nilai default pembagian pendapatan (hanya tersimpan saat belum ada)
+INSERT IGNORE INTO `platform_settings` (`key`, `value`, `created_at`, `updated_at`) VALUES
+    ('revenue.creator_share', '0.6', NOW(), NOW()),
+    ('revenue.admin_share', '0.4', NOW(), NOW()),
+    ('revenue.coin_value', '100', NOW(), NOW());
+
+-- ============================================================
 -- Selesai! Sekarang deploy code baru
 -- ============================================================

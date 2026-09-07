@@ -27,6 +27,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Dipakai di widget test sebagai fake WebViewPlatform (webview_flutter
+  # hanya membawanya transitif, jadi dideklarasikan eksplisit untuk lint).
+  webview_flutter_platform_interface: ^2.15.1
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
 

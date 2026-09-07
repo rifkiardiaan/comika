@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Schema;
 
 class AdminDashboardService
 {
+    public function __construct(private readonly RevenueShareService $revenueShareService) {}
     /**
      * Ringkasan statistik platform untuk admin dashboard.
      *
@@ -65,12 +66,16 @@ class AdminDashboardService
             ->limit(5)
             ->get();
 
-        // Pendapatan platform dari komik (admin share 40%)
+        // Pendapatan platform dari komik (share admin — bisa diubah di dashboard)
+        $coinValue = $this->revenueShareService->coinValue();
+        $adminShare = $this->revenueShareService->adminShare();
+        $creatorShare = $this->revenueShareService->creatorShare();
+
         $totalCoinRevenue = (int) DB::table('transactions')
             ->where('type', 'episode_unlock')
             ->where('status', 'success')
             ->sum('coins');
-        $platformRevenue = $totalCoinRevenue * 100 * 0.40; // 40% admin share
+        $platformRevenue = $totalCoinRevenue * $coinValue * $adminShare;
 
         $monthlyCoinRevenue = (int) DB::table('transactions')
             ->where('type', 'episode_unlock')
@@ -78,7 +83,7 @@ class AdminDashboardService
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->sum('coins');
-        $monthlyPlatformRevenue = $monthlyCoinRevenue * 100 * 0.40;
+        $monthlyPlatformRevenue = $monthlyCoinRevenue * $coinValue * $adminShare;
 
         // Total transaksi unlock
         $totalUnlocks = DB::table('transactions')
@@ -180,6 +185,9 @@ class AdminDashboardService
                 'total' => round($platformRevenue, 2),
                 'monthly' => round($monthlyPlatformRevenue, 2),
                 'total_unlocks' => $totalUnlocks,
+                'coin_value' => $coinValue,
+                'creator_share' => $creatorShare,
+                'admin_share' => $adminShare,
             ],
             'pending_verification' => $pendingVerification,
             'activities' => $activityStats,

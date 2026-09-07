@@ -33,6 +33,7 @@ class ActivityLog extends Model
     public const ACTION_USER_UNBAN = 'user_unban';
     public const ACTION_USER_PERMANENT_BAN = 'user_permanent_ban';
     public const ACTION_CREATOR_APPROVE = 'creator_approve';
+    public const ACTION_SETTING_UPDATE = 'setting_update';
 
     protected $fillable = [
         'user_id',

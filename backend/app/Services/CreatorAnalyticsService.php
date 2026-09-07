@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class CreatorAnalyticsService
 {
+    public function __construct(private readonly RevenueShareService $revenueShareService) {}
+
     /**
      * Ringkasan statistik untuk creator dashboard.
      *
@@ -78,6 +80,7 @@ class CreatorAnalyticsService
                 'pending' => $earningsPending,
                 'paid' => $earningsPaid,
                 'total' => round($earningsPending + $earningsPaid, 2),
+                'revenue_share' => $this->revenueShareService->settings(),
             ],
             'reading_report' => $readingReport,
             'recent_episodes' => $recentEpisodes->map(fn (Episode $episode) => [

@@ -5,6 +5,9 @@
 # Frontend React di root (index.html + assets/)
 # =====================================================================
 
+# Pastikan file APK disajikan dengan MIME yang benar (Android installer)
+AddType application/vnd.android.package-archive .apk
+
 <IfModule mod_rewrite.c>
     Options -MultiViews -Indexes
     RewriteEngine On

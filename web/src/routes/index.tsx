@@ -44,6 +44,7 @@ import AdminTransactionsPage from '../pages/admin/AdminTransactionsPage'
 import AdminCreatorApplicationsPage from '../pages/admin/AdminCreatorApplicationsPage'
 import AdminActivityLogPage from '../pages/admin/AdminActivityLogPage'
 import AdminVvipPage from '../pages/admin/AdminVvipPage'
+import AdminRevenuePage from '../pages/admin/AdminRevenuePage'
 
 export const router = createBrowserRouter([
   {
@@ -100,6 +101,7 @@ export const router = createBrowserRouter([
       { path: 'genres', element: <AdminGenresPage /> },
       { path: 'transactions', element: <AdminTransactionsPage /> },
       { path: 'activities', element: <AdminActivityLogPage /> },
+      { path: 'revenue', element: <AdminRevenuePage /> },
       { path: 'vvip', element: <AdminVvipPage /> },
       { path: 'creator-applications', element: <AdminCreatorApplicationsPage /> },
     ],

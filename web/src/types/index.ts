@@ -193,6 +193,17 @@ export interface EpisodePage {
 
 export type CreatorEarningStatus = 'pending' | 'paid'
 
+/** Pengaturan pembagian pendapatan penjualan komik berbayar. */
+export interface RevenueShareSettings {
+  /** Bagian pendapatan untuk creator (0.0 – 1.0). */
+  creator_share: number
+  /** Bagian pendapatan untuk platform/admin (0.0 – 1.0). */
+  admin_share: number
+  /** Nilai nominal 1 koin dalam rupiah. */
+  coin_value: number
+  updated_at: string | null
+}
+
 export interface CreatorEarning {
   id: number
   amount: number
@@ -215,6 +226,7 @@ export interface EarningsSummary {
   total: number
   available: number
   pending_withdrawals: number
+  revenue_share?: RevenueShareSettings
 }
 
 export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'paid'
@@ -406,7 +418,7 @@ export interface CreatorDashboard {
   total_followers: number
   total_comments: number
   rating_avg: number
-  earnings: { pending: number; paid: number; total: number }
+  earnings: { pending: number; paid: number; total: number; revenue_share?: RevenueShareSettings }
   reading_report?: {
     free_reads: number
     paid_reads: number
@@ -648,7 +660,14 @@ export interface DashboardStats {
   comments: number
   reports: { pending: number }
   engagement: { total_views: number; total_likes: number }
-  revenue: { total: number; monthly: number; total_unlocks: number }
+  revenue: {
+    total: number
+    monthly: number
+    total_unlocks: number
+    coin_value: number
+    creator_share: number
+    admin_share: number
+  }
   pending_verification: number
   activities: {
     total: number

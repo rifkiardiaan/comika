@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminGenreController;
 use App\Http\Controllers\Api\AdminReadingController;
 use App\Http\Controllers\Api\AdminReportController;
+use App\Http\Controllers\Api\AdminRevenueController;
 use App\Http\Controllers\Api\AdminTransactionController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
@@ -391,6 +392,10 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('transactions', [AdminTransactionController::class, 'index']);
     Route::get('withdrawals', [AdminTransactionController::class, 'withdrawals']);
     Route::patch('withdrawals/{withdrawal}/status', [AdminTransactionController::class, 'handleWithdrawal']);
+
+    // Pendapatan & pembagian pendapatan (Phase 09 — configurable share)
+    Route::get('revenue/settings', [AdminRevenueController::class, 'index']);
+    Route::put('revenue/settings', [AdminRevenueController::class, 'updateSettings']);
 
     // Pengajuan creator
     Route::get('creator-applications', [CreatorApplicationController::class, 'index']);

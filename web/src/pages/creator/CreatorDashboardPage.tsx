@@ -134,6 +134,11 @@ export default function CreatorDashboardPage() {
             <span className="font-semibold text-amber-300">{(data?.earnings?.pending ?? 0).toLocaleString('id-ID')}</span> menunggu ·{' '}
             <span className="font-semibold text-emerald-300">{(data?.earnings?.paid ?? 0).toLocaleString('id-ID')}</span> dibayar
           </p>
+          <p className="mt-1 text-[11px] text-surface-500">
+            share kamu {data?.earnings?.revenue_share ? Math.round(data.earnings.revenue_share.creator_share * 100) : 60}% · platform{' '}
+            {data?.earnings?.revenue_share ? Math.round(data.earnings.revenue_share.admin_share * 100) : 40}% · 1 koin = Rp{' '}
+            {data?.earnings?.revenue_share?.coin_value ?? 100}
+          </p>
           <p className="mt-3 flex items-center gap-1 text-xs font-medium text-emerald-300 transition-transform group-hover:translate-x-0.5">
             Lihat detail <ArrowRight size={12} />
           </p>

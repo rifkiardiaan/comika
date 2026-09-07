@@ -12,6 +12,7 @@ import {
   Menu,
   MessageSquare,
   Palette,
+  PieChart,
   Shield,
   Tags,
   UserPlus,
@@ -32,6 +33,7 @@ const navItems = [
   { to: '/admin/activities', label: 'Riwayat Aktivitas', icon: History },
   { to: '/admin/genres', label: 'Genre', icon: Tags },
   { to: '/admin/transactions', label: 'Transaksi', icon: Landmark },
+  { to: '/admin/revenue', label: 'Pendapatan', icon: PieChart },
 ]
 
 function SidebarContent({ onNavigate, pendingCount }: { onNavigate?: () => void; pendingCount?: number }) {

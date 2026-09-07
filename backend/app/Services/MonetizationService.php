@@ -24,19 +24,24 @@ use Illuminate\Validation\ValidationException;
  * - Server yang menghitung saldo & nominal — jangan percaya client.
  * - Saldo koin bersumber dari `wallets` (lihat WalletService).
  *
- * Konversi (aturan bisnis MVP, dikonfigurasi di sini):
- * - 1 koin bernilai nominal Rp 100.
- * - Creator menerima 60% dari nilai unlock episode premium.
+ * Konversi (aturan bisnis MVP):
+ * - Nilai nominal 1 koin default Rp 100, bisa diubah admin lewat
+ *   platform_settings (revenue.coin_value).
+ * - Creator menerima share dari nilai unlock episode premium.
+ *   Share default 60%, bisa diubah admin melalui RevenueShareService.
  */
 class MonetizationService
 {
-    /** Nilai nominal 1 koin dalam rupiah. */
+    /** Nilai nominal 1 koin dalam rupiah (default — bisa diubah admin). */
     public const COIN_VALUE = 100;
 
-    /** Persentase share creator (60%) dari nilai unlock. */
+    /** Persentase share creator default (60%) dari nilai unlock. */
     public const CREATOR_SHARE = 0.60;
 
-    public function __construct(private readonly WalletService $walletService) {}
+    public function __construct(
+        private readonly WalletService $walletService,
+        private readonly RevenueShareService $revenueShareService,
+    ) {}
 
     /**
      * Beli paket koin. MVP: tanpa payment gateway — pembayaran
@@ -221,7 +226,7 @@ class MonetizationService
      */
     private function recordCreatorEarning(Episode $episode, Transaction $transaction): CreatorEarning
     {
-        $amount = round($episode->price_coin * self::COIN_VALUE * self::CREATOR_SHARE, 2);
+        $amount = round($episode->price_coin * $this->revenueShareService->coinValue() * $this->revenueShareService->creatorShare(), 2);
 
         return CreatorEarning::create([
             'creator_id' => $episode->comic->creator_id,
@@ -235,7 +240,7 @@ class MonetizationService
     /**
      * Ringkasan earning & saldo yang bisa ditarik untuk creator.
      *
-     * @return array{pending: float, paid: float, total: float, available: float, pending_withdrawals: float}
+     * @return array{pending: float, paid: float, total: float, available: float, pending_withdrawals: float, revenue_share: array<string, mixed>}
      */
     public function earningsSummary(User $creator): array
     {
@@ -254,6 +259,7 @@ class MonetizationService
             'total' => round($pending + $paid, 2),
             'available' => round(max(0, $pending - $pendingWithdrawals), 2),
             'pending_withdrawals' => round($pendingWithdrawals, 2),
+            'revenue_share' => $this->revenueShareService->settings(),
         ];
     }
 

@@ -250,6 +250,7 @@ class _CreatorDashboardScreenState extends State<CreatorDashboardScreen> {
   /// Earnings card — total, pending, paid.
   Widget _buildEarningsCard() {
     final earnings = _data?.earnings;
+    final revenueShare = earnings?.revenueShare;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -284,6 +285,29 @@ class _CreatorDashboardScreenState extends State<CreatorDashboardScreen> {
               _earnChip('Dibayar', earnings?.paid ?? 0, Colors.greenAccent),
             ],
           ),
+          if (revenueShare != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.pie_chart, color: Colors.greenAccent, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Share kamu ${(revenueShare.creatorShare * 100).round()}% · platform ${(revenueShare.adminShare * 100).round()}% · 1 koin = Rp ${revenueShare.coinValue.toInt()}',
+                      style: TextStyle(fontSize: 10, color: Colors.grey.shade400),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

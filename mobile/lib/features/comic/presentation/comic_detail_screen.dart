@@ -312,6 +312,7 @@ class _ComicDetailScreenState extends State<ComicDetailScreen> {
                         locked: locked,
                         onTap: () => _openReader(ep.id),
                         comicTitle: comic.title,
+                        comicCoverUrl: comic.coverUrl,
                       );
                     },
                     childCount: detail.episodes.length,
@@ -486,7 +487,7 @@ class _ComicDetailScreenState extends State<ComicDetailScreen> {
       await DownloadService.instance.downloadAllEpisodes(
         episodes: accessibleEpisodes,
         comicTitle: comic.title,
-        comicCoverUrl: null,
+        comicCoverUrl: comic.coverUrl,
         onProgress: (current, total, epTitle, progress) {
           if (mounted) {
             setState(() {
@@ -953,8 +954,15 @@ class _EpisodeTile extends StatefulWidget {
   final bool locked;
   final VoidCallback onTap;
   final String? comicTitle;
+  final String? comicCoverUrl;
 
-  const _EpisodeTile({required this.episode, required this.locked, required this.onTap, this.comicTitle});
+  const _EpisodeTile({
+    required this.episode,
+    required this.locked,
+    required this.onTap,
+    this.comicTitle,
+    this.comicCoverUrl,
+  });
 
   @override
   State<_EpisodeTile> createState() => _EpisodeTileState();
@@ -986,7 +994,7 @@ class _EpisodeTileState extends State<_EpisodeTile> {
       await DownloadService.instance.downloadEpisode(
         detail: detail,
         comicTitle: widget.comicTitle,
-        comicCoverUrl: null,
+        comicCoverUrl: widget.comicCoverUrl,
         showNotification: true,
       );
       if (mounted) {

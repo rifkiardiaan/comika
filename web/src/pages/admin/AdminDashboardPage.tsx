@@ -107,6 +107,8 @@ export default function AdminDashboardPage() {
 
   const { users, comics, episodes, comments, engagement, revenue, pending_verification } = stats
   const pendingCreatorApps = creatorApps // already filtered by API to 'pending'
+  const adminSharePct = Math.round((revenue.admin_share ?? 0.4) * 100)
+  const creatorSharePct = Math.round((revenue.creator_share ?? 0.6) * 100)
 
   return (
     <div className="animate-fade-in">
@@ -179,7 +181,7 @@ export default function AdminDashboardPage() {
           value={`Rp ${revenue.monthly.toLocaleString('id-ID')}`}
           icon={TrendingUp}
           tone="bg-sky-500/15 text-sky-300"
-          sub="share 40% platform"
+          sub={`share ${adminSharePct}% platform`}
         />
         <StatCard
           label="Komik Menunggu Verifikasi"
@@ -188,6 +190,27 @@ export default function AdminDashboardPage() {
           tone="bg-amber-500/15 text-amber-300"
           sub="perlu review admin"
         />
+      </div>
+
+      {/* Pembagian pendapatan creator : platform */}
+      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-surface-800 bg-surface-900 p-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/15 text-brand-300">
+            <TrendingUp size={18} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-surface-100">Pembagian Pendapatan · Creator {creatorSharePct}% : Platform {adminSharePct}%</p>
+            <p className="text-xs text-surface-500">
+              Setiap unlock episode premium dibagi sesuai persentase ini · 1 koin = Rp {revenue.coin_value ?? 100}
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/admin/revenue"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-110"
+        >
+          <TrendingUp size={15} /> Atur & Detail Pendapatan
+        </Link>
       </div>
 
       {/* Engagement + comments + aktivitas */}

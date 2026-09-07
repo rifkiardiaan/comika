@@ -105,6 +105,7 @@ class DownloadService {
       downloadedAt: DateTime.now(),
       localPagePaths: localPaths,
       totalSizeBytes: totalBytes,
+      localCoverPath: await _downloadCover(comicCoverUrl, episode.comicId),
     );
 
     // Update prefs
@@ -235,6 +236,15 @@ class DownloadService {
       }
       items.removeWhere((e) => e.episodeId == episodeId);
       await _saveAll(items);
+
+      // Hapus folder komik (termasuk cover) bila tidak ada episode tersisa
+      final remaining = items.any((e) => e.comicId == target.comicId);
+      if (!remaining) {
+        final comicDir = await _getComicDir(target.comicId);
+        if (await comicDir.exists()) {
+          await comicDir.delete(recursive: true);
+        }
+      }
     }
   }
 
@@ -310,5 +320,34 @@ class DownloadService {
   Future<Directory> _getEpisodeDir(int comicId, int episodeId) async {
     final root = await _getDownloadRoot();
     return Directory('${root.path}/comic_${comicId}_eps_$episodeId');
+  }
+
+  Future<Directory> _getComicDir(int comicId) async {
+    final root = await _getDownloadRoot();
+    return Directory('${root.path}/comic_$comicId');
+  }
+
+  /// Download cover komik ke local storage — dipakai thumbnail di Komik Offline.
+  /// Disimpan sekali per komik (`comic_<id>/cover.jpg`) agar hemat bandwith.
+  /// Best-effort: return null bila gagal agar download episode tidak terblokir.
+  Future<String?> _downloadCover(String? coverUrl, int comicId) async {
+    if (coverUrl == null || coverUrl.isEmpty) return null;
+    final url = ApiConstants.assetUrl(coverUrl);
+    if (url.isEmpty) return null;
+
+    try {
+      final dir = await _getComicDir(comicId);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final file = File('${dir.path}/cover.jpg');
+      // Sudah pernah didownload — pakai yang ada
+      if (await file.exists()) return file.path;
+      final bytes = await _api.downloadImage(url);
+      await file.writeAsBytes(bytes);
+      return file.path;
+    } catch (_) {
+      return null;
+    }
   }
 }

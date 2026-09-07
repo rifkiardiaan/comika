@@ -12,6 +12,7 @@ class DownloadedEpisode {
   final DateTime downloadedAt;
   final List<String> localPagePaths; // path lokal tiap halaman
   final int totalSizeBytes;
+  final String? localCoverPath; // path lokal cover — agar cover tetap tampil saat offline
 
   const DownloadedEpisode({
     required this.episodeId,
@@ -24,6 +25,7 @@ class DownloadedEpisode {
     required this.downloadedAt,
     required this.localPagePaths,
     required this.totalSizeBytes,
+    this.localCoverPath,
   });
 
   /// Komik unik berdasarkan comicId (untuk grouping di UI).
@@ -47,6 +49,7 @@ class DownloadedEpisode {
         'downloadedAt': downloadedAt.toIso8601String(),
         'localPagePaths': localPagePaths,
         'totalSizeBytes': totalSizeBytes,
+        'localCoverPath': localCoverPath,
       };
 
   factory DownloadedEpisode.fromJson(Map<String, dynamic> json) {
@@ -61,6 +64,7 @@ class DownloadedEpisode {
       downloadedAt: DateTime.tryParse(json['downloadedAt'] as String? ?? '') ?? DateTime.now(),
       localPagePaths: (json['localPagePaths'] as List<dynamic>? ?? const []).cast<String>(),
       totalSizeBytes: json['totalSizeBytes'] as int? ?? 0,
+      localCoverPath: json['localCoverPath'] as String?,
     );
   }
 
